@@ -1,0 +1,5 @@
+{
+  "name": "Industrial Control Simulator",
+  "description": "A React-based industrial control panel simulation for an ESP32 system, featuring dashboard monitoring, parameter configuration, and manual test modes.",
+  "requestFramePermissions": []
+}

@@ -38,10 +38,11 @@ const Settings: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const sanitizedTemp = Math.min(Math.max(0, formData.sp_temp), 50);
-    const sanitizedHistTemp = Math.max(0.5, formData.hist_temp);
+    const maxTemp = formData.temp_unit === 'C' ? 165 : 329;
+    const sanitizedTemp = Math.min(Math.max(0, formData.sp_temp), maxTemp);
+    const sanitizedHistTemp = Math.max(1, formData.hist_temp);
     const sanitizedHistUmid = Math.max(1, formData.hist_umid);
-    const sanitizedUmid = Math.min(Math.max(20, formData.sp_umid), 90);
+    const sanitizedUmid = Math.min(Math.max(20, formData.sp_umid), 100);
 
     const sanitizedData: Parameters = {
         ...formData,
@@ -98,36 +99,44 @@ const Settings: React.FC = () => {
                     <div>
                         <div className="flex justify-between">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Setpoint</label>
-                            <span className="text-xs text-slate-400">0-50°C</span>
+                            <span className="text-xs text-slate-400">Max: {formData.temp_unit === 'C' ? '165°C' : '329°F'}</span>
                         </div>
-                        <div className="relative">
+                        <div className="flex">
                             <input
                                 type="number"
                                 name="sp_temp"
                                 value={formData.sp_temp}
                                 onChange={handleChange}
                                 min="0"
-                                max="50"
+                                max={formData.temp_unit === 'C' ? 165 : 329}
                                 step="0.5"
-                                className="w-full px-3 py-2.5 border rounded-lg border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-base"
+                                className="w-full px-3 py-2.5 border rounded-l-lg border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-base"
                             />
-                            <span className="absolute right-3 top-2.5 text-slate-400">°C</span>
+                            <select
+                                name="temp_unit"
+                                value={formData.temp_unit}
+                                onChange={handleChange}
+                                className="bg-slate-50 border border-slate-200 border-l-0 rounded-r-lg px-2 text-sm text-slate-600 outline-none focus:border-orange-500"
+                            >
+                                <option value="C">°C</option>
+                                <option value="F">°F</option>
+                            </select>
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Histerese</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Histerese (Min: 1)</label>
                         <div className="relative">
                             <input
                                 type="number"
                                 name="hist_temp"
                                 value={formData.hist_temp}
                                 onChange={handleChange}
-                                min="0.5"
+                                min="1"
                                 max="10"
                                 step="0.5"
                                 className="w-full px-3 py-2.5 border rounded-lg border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-base"
                             />
-                            <span className="absolute right-3 top-2.5 text-slate-400">°C</span>
+                            <span className="absolute right-3 top-2.5 text-slate-400">°{formData.temp_unit}</span>
                         </div>
                     </div>
                 </div>
@@ -137,7 +146,7 @@ const Settings: React.FC = () => {
                     <div>
                         <div className="flex justify-between">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Setpoint</label>
-                            <span className="text-xs text-slate-400">20% - 90%</span>
+                            <span className="text-xs text-slate-400">20% - 100%</span>
                         </div>
                         <div className="relative">
                             <input
@@ -146,14 +155,14 @@ const Settings: React.FC = () => {
                                 value={formData.sp_umid}
                                 onChange={handleChange}
                                 min="20"
-                                max="90"
+                                max="100"
                                 className="w-full px-3 py-2.5 border rounded-lg border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none pr-8 transition-all text-base"
                             />
                             <span className="absolute right-3 top-2.5 text-slate-400">%</span>
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Histerese</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Histerese (Min: 1)</label>
                         <div className="relative">
                             <input
                                 type="number"
@@ -169,6 +178,136 @@ const Settings: React.FC = () => {
                     </div>
                 </div>
 
+            </div>
+        </section>
+
+        <section className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-100">
+                Temporizadores (Ciclos)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <h4 className="font-medium text-slate-700 mb-3">Vibrador (Q3)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Tempo ON (s)</label>
+                            <input
+                                type="number"
+                                name="time_vibrador_on"
+                                value={formData.time_vibrador_on}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Tempo OFF (s)</label>
+                            <input
+                                type="number"
+                                name="time_vibrador_off"
+                                value={formData.time_vibrador_off}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <h4 className="font-medium text-slate-700 mb-3">Rosca Secundária (Q2)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Tempo ON (s)</label>
+                            <input
+                                type="number"
+                                name="time_rosca_sec_on"
+                                value={formData.time_rosca_sec_on}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Tempo OFF (s)</label>
+                            <input
+                                type="number"
+                                name="time_rosca_sec_off"
+                                value={formData.time_rosca_sec_off}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="flex justify-between items-center mb-3">
+                        <h4 className="font-medium text-slate-700">Alarme (Q7)</h4>
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.alarme_enabled}
+                                onChange={handleCheckboxChange('alarme_enabled')}
+                                className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 accent-orange-600"
+                            />
+                            <span className="text-xs text-slate-500">Habilitado</span>
+                        </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Tempo ON (min)</label>
+                            <input
+                                type="number"
+                                name="time_alarme_on"
+                                value={formData.time_alarme_on}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Tempo OFF (min)</label>
+                            <input
+                                type="number"
+                                name="time_alarme_off"
+                                value={formData.time_alarme_off}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <h4 className="font-medium text-slate-700 mb-3">Chama Piloto</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Ativação (s)</label>
+                            <input
+                                type="number"
+                                name="time_chama_atv"
+                                value={formData.time_chama_atv}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 uppercase">Espera (min)</label>
+                            <input
+                                type="number"
+                                name="time_chama_wait"
+                                value={formData.time_chama_wait}
+                                onChange={handleChange}
+                                min="0"
+                                className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 

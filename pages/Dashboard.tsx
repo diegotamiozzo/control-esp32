@@ -1,16 +1,20 @@
 import React from 'react';
 import { useMachine } from '../context/MachineContext';
-import { Thermometer, Droplets, Wifi, WifiOff } from 'lucide-react';
+import { Thermometer, Droplets, Wifi, WifiOff, Power, Zap, ShieldAlert, CirclePlay, CircleStop, CircleCheck, TriangleAlert } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { state } = useMachine();
-  const { inputs, params, mqttConnected } = state;
+  const { inputs, outputs, params, mqttConnected } = state;
 
   const tempPercentage = Math.min(100, Math.max(0, (inputs.i6_temp_sensor / 100) * 100));
   const humPercentage = Math.min(100, Math.max(0, inputs.umidade_sensor));
 
   const isTempOk = Math.abs(inputs.i6_temp_sensor - params.sp_temp) <= params.hist_temp;
   const isHumOk = Math.abs(inputs.umidade_sensor - params.sp_umid) <= params.hist_umid;
+
+  const isSystemOn = inputs.i1_habilitacao;
+  const isPowerOn = inputs.i3_energia;
+  const isAlarmActive = outputs.q7_alarme;
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -118,6 +122,142 @@ const Dashboard: React.FC = () => {
             }`}>
               {isHumOk ? 'NORMAL' : 'FORA DO RANGE'}
             </span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold text-slate-700 mb-4">Estados Gerais do Sistema</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+
+          <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-all ${
+              isSystemOn
+              ? 'bg-emerald-500 border-emerald-600 text-white shadow-emerald-200'
+              : 'bg-white border-slate-200'
+          }`}>
+              <div className="flex items-center space-x-4">
+                  <div className={`p-2.5 md:p-3 rounded-full ${isSystemOn ? 'bg-emerald-600/30 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <Power size={24} />
+                  </div>
+                  <div>
+                      <p className={`text-xs md:text-sm font-medium ${isSystemOn ? 'text-emerald-50' : 'text-slate-500'}`}>Sistema (I1)</p>
+                      <h4 className={`text-base md:text-lg font-bold ${isSystemOn ? 'text-white' : 'text-slate-700'}`}>
+                          {isSystemOn ? 'LIGADO' : 'DESLIGADO'}
+                      </h4>
+                  </div>
+              </div>
+              <div className={isSystemOn ? 'text-white/80' : 'text-slate-200'}>
+                  {isSystemOn ? <CirclePlay size={28} className="md:w-8 md:h-8" /> : <CircleStop size={28} className="md:w-8 md:h-8" />}
+              </div>
+          </div>
+
+          <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-all ${
+              isPowerOn
+              ? 'bg-white border-slate-200'
+              : 'bg-rose-500 border-rose-600 text-white shadow-rose-200'
+          }`}>
+              <div className="flex items-center space-x-4">
+                  <div className={`p-2.5 md:p-3 rounded-full ${isPowerOn ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-700 text-white'}`}>
+                      <Zap size={24} />
+                  </div>
+                  <div>
+                      <p className={`text-xs md:text-sm font-medium ${isPowerOn ? 'text-slate-500' : 'text-rose-100'}`}>Energia (I3)</p>
+                      <h4 className={`text-base md:text-lg font-bold ${isPowerOn ? 'text-emerald-700' : 'text-white'}`}>
+                          {isPowerOn ? 'NORMAL' : 'FALHA CRÍTICA'}
+                      </h4>
+                  </div>
+              </div>
+              <div className={isPowerOn ? 'text-emerald-200' : 'text-white animate-pulse'}>
+                  {isPowerOn ? <CircleCheck size={28} className="md:w-8 md:h-8" /> : <TriangleAlert size={28} className="md:w-8 md:h-8" />}
+              </div>
+          </div>
+
+          <div className={`p-5 md:p-6 rounded-2xl border shadow-sm flex items-center justify-between transition-all ${
+              !isAlarmActive
+              ? 'bg-white border-slate-200'
+              : 'bg-rose-50 text-rose-700 border-rose-200'
+          }`}>
+              <div className="flex items-center space-x-4">
+                  <div className={`p-2.5 md:p-3 rounded-full ${!isAlarmActive ? 'bg-slate-100 text-slate-400' : 'bg-rose-100 text-rose-600'}`}>
+                      <ShieldAlert size={24} />
+                  </div>
+                  <div>
+                      <p className={`text-xs md:text-sm font-medium ${!isAlarmActive ? 'text-slate-500' : 'text-rose-500'}`}>Alarmes (Q7)</p>
+                      <h4 className={`text-base md:text-lg font-bold ${!isAlarmActive ? 'text-slate-700' : 'text-rose-700'}`}>
+                          {isAlarmActive ? 'ATIVO' : 'NORMAL'}
+                      </h4>
+                  </div>
+              </div>
+              <div className={!isAlarmActive ? 'text-slate-300' : 'text-rose-400 animate-pulse'}>
+                  {!isAlarmActive ? <CircleCheck size={28} className="md:w-8 md:h-8" /> : <TriangleAlert size={28} className="md:w-8 md:h-8" />}
+              </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4 pb-2 border-b border-slate-100">Saídas (Outputs)</h3>
+          <div className="space-y-3">
+            {[
+              { key: 'q1_rosca_principal', label: 'Q1 - Rosca Principal', desc: 'Alimenta o sistema' },
+              { key: 'q2_rosca_secundaria', label: 'Q2 - Rosca Secundária', desc: 'Alimentação auxiliar' },
+              { key: 'q3_vibrador', label: 'Q3 - Vibrador', desc: 'Para descer material' },
+              { key: 'q4_ventoinha', label: 'Q4 - Ventoinha', desc: 'Aquecimento/queima' },
+              { key: 'q5_corta_fogo', label: 'Q5 - Corta Fogo', desc: 'Abre passagem' },
+              { key: 'q6_damper', label: 'Q6 - Damper', desc: 'Abertura umidade' },
+              { key: 'q7_alarme', label: 'Q7 - Alarme', desc: 'Desvio umidade/temp' }
+            ].map(output => (
+              <div key={output.key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{output.label}</p>
+                  <p className="text-xs text-slate-500">{output.desc}</p>
+                </div>
+                <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                  outputs[output.key as keyof typeof outputs]
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-200 text-slate-500'
+                }`}>
+                  {outputs[output.key as keyof typeof outputs] ? 'ON' : 'OFF'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4 pb-2 border-b border-slate-100">Entradas (Inputs)</h3>
+          <div className="space-y-3">
+            {[
+              { key: 'i1_habilitacao', label: 'I1 - Botão Liga', desc: 'Libera o ciclo', type: 'digital' },
+              { key: 'i2_reset', label: 'I2 - Reset', desc: 'Reset de falhas', type: 'digital' },
+              { key: 'i3_energia', label: 'I3 - Energia', desc: 'Sinal falta fase', type: 'digital' },
+              { key: 'i4_fim_curso_aberta', label: 'I4 - FC Aberta', desc: 'Corta fogo aberto', type: 'digital' },
+              { key: 'i5_fim_curso_fechada', label: 'I5 - FC Fechada', desc: 'Corta fogo fechado', type: 'digital' },
+              { key: 'i6_temp_sensor', label: 'I6 - Temperatura', desc: `${inputs.i6_temp_sensor.toFixed(1)}°${params.temp_unit}`, type: 'analog' },
+              { key: 'umidade_sensor', label: 'I7 - Umidade', desc: `${inputs.umidade_sensor.toFixed(1)}%`, type: 'analog' }
+            ].map(input => (
+              <div key={input.key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-slate-700">{input.label}</p>
+                  <p className="text-xs text-slate-500">{input.desc}</p>
+                </div>
+                {input.type === 'digital' ? (
+                  <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                    inputs[input.key as keyof typeof inputs]
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    {inputs[input.key as keyof typeof inputs] ? 'ATIVO' : 'INATIVO'}
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 text-xs font-bold bg-slate-200 text-slate-700 rounded-full">
+                    ANALOG
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>

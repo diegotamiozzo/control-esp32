@@ -139,19 +139,34 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
                     setState(prev => {
                         const newInputs = { ...prev.inputs };
                         const newOutputs = { ...prev.outputs };
+                        const newParams = { ...prev.params };
 
-                        if (payload.temp !== undefined) newInputs.i6_temp_sensor = payload.temp;
-                        if (payload.hum !== undefined) newInputs.umidade_sensor = payload.hum;
-                        
-                        // Atualiza outras chaves se existirem no payload
-                        if (payload.inputs) Object.assign(newInputs, payload.inputs);
-                        if (payload.outputs) Object.assign(newOutputs, payload.outputs);
+                        // Mapear entradas do ESP32 (I1-I7)
+                        if (payload.i1_habilitacao !== undefined) newInputs.i1_habilitacao = !!payload.i1_habilitacao;
+                        if (payload.i2_reset !== undefined) newInputs.i2_reset = !!payload.i2_reset;
+                        if (payload.i3_energia !== undefined) newInputs.i3_energia = !!payload.i3_energia;
+                        if (payload.i4_fim_curso_aberta !== undefined) newInputs.i4_fim_curso_aberta = !!payload.i4_fim_curso_aberta;
+                        if (payload.i5_fim_curso_fechada !== undefined) newInputs.i5_fim_curso_fechada = !!payload.i5_fim_curso_fechada;
+                        if (payload.i6_temp_sensor !== undefined) newInputs.i6_temp_sensor = Number(payload.i6_temp_sensor);
+                        if (payload.umidade_sensor !== undefined) newInputs.umidade_sensor = Number(payload.umidade_sensor);
 
-                        // Mapeamento de redundância para relés diretos do ESP32 code
-                        if (payload.rele1 !== undefined) newOutputs.q4_ventoinha = !!payload.rele1; // Temp control -> Fan
-                        if (payload.rele2 !== undefined) newOutputs.q6_damper = !!payload.rele2;    // Hum control -> Damper
-                        
-                        return { ...prev, inputs: newInputs, outputs: newOutputs };
+                        // Mapear saídas do ESP32 (Q1-Q7)
+                        if (payload.q1_rosca_principal !== undefined) newOutputs.q1_rosca_principal = !!payload.q1_rosca_principal;
+                        if (payload.q2_rosca_secundaria !== undefined) newOutputs.q2_rosca_secundaria = !!payload.q2_rosca_secundaria;
+                        if (payload.q3_vibrador !== undefined) newOutputs.q3_vibrador = !!payload.q3_vibrador;
+                        if (payload.q4_ventoinha !== undefined) newOutputs.q4_ventoinha = !!payload.q4_ventoinha;
+                        if (payload.q5_corta_fogo !== undefined) newOutputs.q5_corta_fogo = !!payload.q5_corta_fogo;
+                        if (payload.q6_damper !== undefined) newOutputs.q6_damper = !!payload.q6_damper;
+                        if (payload.q7_alarme !== undefined) newOutputs.q7_alarme = !!payload.q7_alarme;
+
+                        // Mapear parâmetros do ESP32
+                        if (payload.sp_temp !== undefined) newParams.sp_temp = Number(payload.sp_temp);
+                        if (payload.sp_umid !== undefined) newParams.sp_umid = Number(payload.sp_umid);
+                        if (payload.hist_temp !== undefined) newParams.hist_temp = Number(payload.hist_temp);
+                        if (payload.hist_umid !== undefined) newParams.hist_umid = Number(payload.hist_umid);
+                        if (payload.temp_unit !== undefined) newParams.temp_unit = payload.temp_unit === 'F' ? 'F' : 'C';
+
+                        return { ...prev, inputs: newInputs, outputs: newOutputs, params: newParams };
                     });
                 } catch (e) {
                     console.error("Erro parse MQTT", e);
@@ -333,11 +348,18 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         const updated = { ...s.params, ...newParams };
         if (!isDemoMode && clientRef.current?.connected) {
             const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
-            const payload = {
-                sp_t: updated.sp_temp,
-                sp_h: updated.sp_umid
-            };
-            clientRef.current.publish(topicCmd, JSON.stringify(payload));
+            const payload: any = {};
+
+            // Enviar apenas os parâmetros que o ESP32 aceita
+            if (newParams.sp_temp !== undefined) payload.sp_temp = updated.sp_temp;
+            if (newParams.sp_umid !== undefined) payload.sp_umid = updated.sp_umid;
+            if (newParams.hist_temp !== undefined) payload.hist_temp = updated.hist_temp;
+            if (newParams.hist_umid !== undefined) payload.hist_umid = updated.hist_umid;
+            if (newParams.temp_unit !== undefined) payload.temp_unit = updated.temp_unit;
+
+            if (Object.keys(payload).length > 0) {
+                clientRef.current.publish(topicCmd, JSON.stringify(payload));
+            }
         }
         return { ...s, params: updated };
     });
@@ -354,20 +376,10 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
   }, [isDemoMode]);
 
   const toggleOutputManual = useCallback((key: keyof SystemOutputs) => {
-    setState(s => {
-      const newVal = !s.outputs[key];
-      if (!isDemoMode && clientRef.current?.connected) {
-          const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
-          // Map to ESP32 specific manual override keys if needed
-          const payload: any = {};
-          // Exemplo: r3=Vibrador, r4=Ventoinha
-          if (key === 'q3_vibrador') payload.r3 = newVal;
-          if (key === 'q4_ventoinha') payload.r4 = newVal;
-          payload[key] = newVal; 
-          clientRef.current.publish(topicCmd, JSON.stringify(payload));
-      }
-      return { ...s, outputs: { ...s.outputs, [key]: newVal } };
-    });
+    // Nota: O firmware ESP32 principal não aceita comandos diretos de saída via MQTT
+    // Apenas funciona em modo DEMO para simulação
+    if (!isDemoMode) return;
+    setState(s => ({ ...s, outputs: { ...s.outputs, [key]: !s.outputs[key] } }));
   }, [isDemoMode]);
 
   const setManualMode = useCallback((enabled: boolean) => {

@@ -100,6 +100,13 @@ int time_chama_wait = 5;
 // --- Modo de Operação ---
 bool manual_mode = false; // false = automático, true = manual
 
+// --- Detecção de Borda (Reset) ---
+bool i2_reset_last = false;
+
+// --- Timer do Alarme ---
+unsigned long alarme_timer = 0;
+bool alarme_cycle_state = false;
+
 // --- Entradas (Estado) ---
 struct {
   bool i1_habilitacao;
@@ -180,7 +187,17 @@ void readInputs() {
   // INPUT_PULLUP: LOW (0) = ativo, HIGH (1) = inativo
   // Invertemos a lógica para que GND = true (ativo)
   inputs.i1_habilitacao = !digitalRead(PIN_I1_HABILITACAO);
-  inputs.i2_reset = !digitalRead(PIN_I2_RESET);
+
+  // I2 (Reset) - Detecção de borda (pulso)
+  bool i2_current = !digitalRead(PIN_I2_RESET);
+  if (i2_current && !i2_reset_last) {
+    // Borda de subida detectada (pulso)
+    inputs.i2_reset = true;
+  } else {
+    inputs.i2_reset = false;
+  }
+  i2_reset_last = i2_current;
+
   inputs.i3_energia = !digitalRead(PIN_I3_ENERGIA);
   inputs.i4_fim_curso_aberta = !digitalRead(PIN_I4_FIM_CURSO_ABERTA);
   inputs.i5_fim_curso_fechada = !digitalRead(PIN_I5_FIM_CURSO_FECHADA);
@@ -249,7 +266,22 @@ void controlLogic() {
     bool umid_out = (inputs.i7_umidade_sensor < (sp_umid - hist_umid)) ||
                     (inputs.i7_umidade_sensor > (sp_umid + hist_umid));
 
-    outputs.q7_alarme = alarme_enabled && (temp_out || umid_out);
+    // Lógica do Alarme com Ciclo ON/OFF
+    if (alarme_enabled && (temp_out || umid_out)) {
+      unsigned long now = millis();
+      unsigned long cycle_time = (time_alarme_on + time_alarme_off) * 1000; // Converter para ms
+      unsigned long on_time = time_alarme_on * 1000;
+
+      if (now - alarme_timer > cycle_time) {
+        alarme_timer = now;
+      }
+
+      unsigned long elapsed = now - alarme_timer;
+      outputs.q7_alarme = (elapsed < on_time);
+    } else {
+      outputs.q7_alarme = false;
+      alarme_timer = millis(); // Reset timer
+    }
 
   } else {
     // Sistema desligado - parada em cascata
@@ -339,6 +371,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
     temp_unit = doc["temp_unit"].as<String>()[0];
     settings_changed = true;
   }
+
+  // Temporizadores
+  if (doc.containsKey("time_vibrador_on")) time_vibrador_on = doc["time_vibrador_on"].as<int>();
+  if (doc.containsKey("time_vibrador_off")) time_vibrador_off = doc["time_vibrador_off"].as<int>();
+  if (doc.containsKey("time_rosca_sec_on")) time_rosca_sec_on = doc["time_rosca_sec_on"].as<int>();
+  if (doc.containsKey("time_rosca_sec_off")) time_rosca_sec_off = doc["time_rosca_sec_off"].as<int>();
+  if (doc.containsKey("time_alarme_on")) time_alarme_on = doc["time_alarme_on"].as<int>();
+  if (doc.containsKey("time_alarme_off")) time_alarme_off = doc["time_alarme_off"].as<int>();
+  if (doc.containsKey("alarme_enabled")) alarme_enabled = doc["alarme_enabled"].as<bool>();
+  if (doc.containsKey("time_chama_atv")) time_chama_atv = doc["time_chama_atv"].as<int>();
+  if (doc.containsKey("time_chama_wait")) time_chama_wait = doc["time_chama_wait"].as<int>();
 
   // Modo Manual
   if (doc.containsKey("manual_mode")) {
@@ -460,8 +503,8 @@ void loop() {
 
   static unsigned long lastRead = 0;
   static unsigned long lastPublish = 0;
-  const long READ_INTERVAL = 2000;
-  const long PUBLISH_INTERVAL = 10000;
+  const long READ_INTERVAL = 500;   // 500ms - Leitura rápida
+  const long PUBLISH_INTERVAL = 2000; // 2s - Publicação rápida
 
   if (millis() - lastRead > READ_INTERVAL) {
     readInputs();

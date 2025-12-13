@@ -363,15 +363,25 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
             const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
             const payload: any = {};
 
-            // Enviar apenas os parâmetros que o ESP32 aceita
+            // Enviar todos os parâmetros
             if (newParams.sp_temp !== undefined) payload.sp_temp = updated.sp_temp;
             if (newParams.sp_umid !== undefined) payload.sp_umid = updated.sp_umid;
             if (newParams.hist_temp !== undefined) payload.hist_temp = updated.hist_temp;
             if (newParams.hist_umid !== undefined) payload.hist_umid = updated.hist_umid;
             if (newParams.temp_unit !== undefined) payload.temp_unit = updated.temp_unit;
+            if (newParams.time_vibrador_on !== undefined) payload.time_vibrador_on = updated.time_vibrador_on;
+            if (newParams.time_vibrador_off !== undefined) payload.time_vibrador_off = updated.time_vibrador_off;
+            if (newParams.time_rosca_sec_on !== undefined) payload.time_rosca_sec_on = updated.time_rosca_sec_on;
+            if (newParams.time_rosca_sec_off !== undefined) payload.time_rosca_sec_off = updated.time_rosca_sec_off;
+            if (newParams.time_alarme_on !== undefined) payload.time_alarme_on = updated.time_alarme_on;
+            if (newParams.time_alarme_off !== undefined) payload.time_alarme_off = updated.time_alarme_off;
+            if (newParams.alarme_enabled !== undefined) payload.alarme_enabled = updated.alarme_enabled;
+            if (newParams.time_chama_atv !== undefined) payload.time_chama_atv = updated.time_chama_atv;
+            if (newParams.time_chama_wait !== undefined) payload.time_chama_wait = updated.time_chama_wait;
 
             if (Object.keys(payload).length > 0) {
                 clientRef.current.publish(topicCmd, JSON.stringify(payload));
+                console.log('⚙️ Parâmetros enviados:', payload);
             }
         }
         return { ...s, params: updated };

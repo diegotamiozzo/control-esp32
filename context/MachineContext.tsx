@@ -19,17 +19,17 @@ const MQTT_PASS = getEnv('VITE_MQTT_PASSWORD');
 const TOPIC_PREFIX = 'dispositivo';
 
 const DEFAULT_PARAMS: Parameters = {
-  sp_temp: 120,
+  sp_temp: 25,
   hist_temp: 2,
-  sp_umid: 40,
+  sp_umid: 60,
   hist_umid: 5,
   temp_unit: 'C',
   time_vibrador_on: 5,
   time_vibrador_off: 15,
   time_rosca_sec_on: 10,
   time_rosca_sec_off: 10,
-  time_alarme_on: 1, 
-  time_alarme_off: 1, 
+  time_alarme_on: 1,
+  time_alarme_off: 1,
   alarme_enabled: true,
   time_chama_atv: 30,
   time_chama_wait: 10,

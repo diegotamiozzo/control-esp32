@@ -8,10 +8,10 @@
 
 // =================================================================
 // SISTEMA DE CONTROLE INDUSTRIAL COMPLETO
-// Entradas: I1-I7 | Sa�das: Q1-Q7
+// Entradas: I1-I7 | Saídas: Q1-Q7
 // =================================================================
 
-// --- CONFIGURA��ES DO MQTT (HIVEMQ CLOUD) ---
+// --- CONFIGURAÇÕES DO MQTT (HIVEMQ CLOUD) ---
 const char* mqtt_server = "72c037df4ced415995ef95169a5c7248.s1.eu.hivemq.cloud";
 const int mqtt_port = 8883;
 const char* mqtt_user = "esp32_cliente02";
@@ -52,7 +52,7 @@ const char* root_ca = \
 "-----END CERTIFICATE-----\n";
 
 // =================================================================
-// PINAGEM - ENTRADAS E SA�DAS
+// PINAGEM - ENTRADAS E SAÍDAS
 // =================================================================
 
 // --- SENSOR DHT11 ---
@@ -60,15 +60,15 @@ const char* root_ca = \
 #define DHT_TYPE DHT11
 
 // --- ENTRADAS DIGITAIS (I1-I5) ---
-#define PIN_I1_HABILITACAO 12        // I1 - Bot�o Liga (libera ciclo)
-#define PIN_I2_RESET 13              // I2 - Bot�o Reset
-#define PIN_I3_ENERGIA 15            // I3 - Falta de energia (rel� falta fase)
+#define PIN_I1_HABILITACAO 12        // I1 - Botão Liga (libera ciclo)
+#define PIN_I2_RESET 13              // I2 - Botão Reset
+#define PIN_I3_ENERGIA 15            // I3 - Falta de energia (relé falta fase)
 #define PIN_I4_FIM_CURSO_ABERTA 16   // I4 - Fim de curso abertura corta fogo
 #define PIN_I5_FIM_CURSO_FECHADA 17  // I5 - Fim de curso fechamento corta fogo
 
-// --- SA�DAS (Q1-Q7) ---
+// --- SAÍDAS (Q1-Q7) ---
 #define PIN_Q1_ROSCA_PRINCIPAL 25    // Q1 - Rosca Principal
-#define PIN_Q2_ROSCA_SECUNDARIA 26   // Q2 - Rosca Secund�ria
+#define PIN_Q2_ROSCA_SECUNDARIA 26   // Q2 - Rosca Secundária
 #define PIN_Q3_VIBRADOR 27           // Q3 - Vibrador
 #define PIN_Q4_VENTOINHA 14          // Q4 - Ventoinha
 #define PIN_Q5_CORTA_FOGO 32         // Q5 - Corta Fogo
@@ -76,10 +76,10 @@ const char* root_ca = \
 #define PIN_Q7_ALARME 23             // Q7 - Alarme
 
 // =================================================================
-// VARI�VEIS DE ESTADO
+// VARIÁVEIS DE ESTADO
 // =================================================================
 
-// --- Par�metros Ajust�veis ---
+// --- Parâmetros Ajustáveis ---
 float sp_temp = 25.0;
 float hist_temp = 2.0;
 float sp_umid = 60.0;
@@ -108,7 +108,7 @@ struct {
   float i7_umidade_sensor;
 } inputs;
 
-// --- Sa�das (Estado) ---
+// --- Saídas (Estado) ---
 struct {
   bool q1_rosca_principal;
   bool q2_rosca_secundaria;
@@ -119,7 +119,7 @@ struct {
   bool q7_alarme;
 } outputs;
 
-// --- T�picos MQTT ---
+// --- Tópicos MQTT ---
 char client_id[32];
 char topic_telemetry[64];
 char topic_command[64];
@@ -136,7 +136,7 @@ DHT dht(DHT_PIN, DHT_TYPE);
 Preferences preferences;
 
 // =================================================================
-// FUN��ES DE PERSIST�NCIA
+// FUNÇÕES DE PERSISTÊNCIA
 // =================================================================
 
 void loadSettings() {
@@ -151,7 +151,7 @@ void loadSettings() {
   preferences.end();
 
   Serial.println("=== Settings Loaded ===");
-  Serial.printf("Temp SP: %.1f�%c | Hist: %.1f\n", sp_temp, temp_unit, hist_temp);
+  Serial.printf("Temp SP: %.1f°%c | Hist: %.1f\n", sp_temp, temp_unit, hist_temp);
   Serial.printf("Umid SP: %.1f%% | Hist: %.1f\n", sp_umid, hist_umid);
   Serial.println("=======================");
 }
@@ -170,7 +170,7 @@ void saveSettings() {
 }
 
 // =================================================================
-// FUN��ES DE CONTROLE DE I/O
+// FUNÇÕES DE CONTROLE DE I/O
 // =================================================================
 
 void readInputs() {
@@ -200,7 +200,7 @@ void applyOutputs() {
 }
 
 // =================================================================
-// L�GICA DE CONTROLE INDUSTRIAL
+// LÓGICA DE CONTROLE INDUSTRIAL
 // =================================================================
 
 void controlLogic() {
@@ -254,7 +254,7 @@ void controlLogic() {
 }
 
 // =================================================================
-// FUN��ES MQTT
+// FUNÇÕES MQTT
 // =================================================================
 
 void publishTelemetry() {
@@ -308,7 +308,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   bool settings_changed = false;
 
-  // Atualizar par�metros
+  // Atualizar parâmetros
   if (doc.containsKey("sp_temp")) {
     sp_temp = doc["sp_temp"].as<float>();
     settings_changed = true;
@@ -363,7 +363,7 @@ void setup() {
   Serial.begin(115200);
   dht.begin();
 
-  // Carregar configura��es
+  // Carregar configurações
   loadSettings();
 
   // Configurar pinos de entrada
@@ -373,7 +373,7 @@ void setup() {
   pinMode(PIN_I4_FIM_CURSO_ABERTA, INPUT_PULLUP);
   pinMode(PIN_I5_FIM_CURSO_FECHADA, INPUT_PULLUP);
 
-  // Configurar pinos de sa�da
+  // Configurar pinos de saída
   pinMode(PIN_Q1_ROSCA_PRINCIPAL, OUTPUT);
   pinMode(PIN_Q2_ROSCA_SECUNDARIA, OUTPUT);
   pinMode(PIN_Q3_VIBRADOR, OUTPUT);
@@ -382,7 +382,7 @@ void setup() {
   pinMode(PIN_Q6_DAMPER, OUTPUT);
   pinMode(PIN_Q7_ALARME, OUTPUT);
 
-  // Inicializar sa�das desligadas
+  // Inicializar saídas desligadas
   applyOutputs();
 
   // WiFi Manager
@@ -398,7 +398,7 @@ void setup() {
 
   Serial.println("WiFi conectado!");
 
-  // Gerar ID e t�picos
+  // Gerar ID e tópicos
   String mac = WiFi.macAddress();
   mac.replace(":", "");
   mac.toCharArray(client_id, 32);

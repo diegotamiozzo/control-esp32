@@ -142,6 +142,69 @@ VITE_MQTT_BROKER=wss://72c037df4ced415995ef95169a5c7248.s1.eu.hivemq.cloud:8884/
 
 ---
 
+## Modo de Teste Manual
+
+### O que foi corrigido?
+
+**Problema 1**: Modo de teste não funcionava com ESP32 real
+- ✅ CORRIGIDO: Agora o firmware aceita comandos de controle manual via MQTT
+
+**Problema 2**: Lógica invertida das entradas (INPUT_PULLUP)
+- ✅ CORRIGIDO: Entradas agora funcionam corretamente com GND = HIGH (ativo)
+
+### Como funciona INPUT_PULLUP?
+
+As entradas digitais do ESP32 usam `INPUT_PULLUP`, que significa:
+- **Sem conexão (pino flutuante)**: Lê HIGH (1) → Invertido para **false (inativo)**
+- **Conectado ao GND**: Lê LOW (0) → Invertido para **true (ativo)**
+
+Portanto:
+- Para **ativar** uma entrada: Conecte o pino ao **GND**
+- Para **desativar** uma entrada: Desconecte o pino (deixe flutuante)
+
+### Como usar o Modo de Teste?
+
+1. Acesse a página **Test Mode** no menu lateral
+2. Clique em **"Habilitar"** para ativar o modo de teste
+3. O firmware ESP32 receberá o comando `manual_mode: true`
+4. A lógica automática será **pausada**
+5. Você poderá clicar nas saídas (Q1-Q7) para ligá-las/desligá-las
+6. Cada clique envia um comando MQTT para o ESP32
+
+### Comandos MQTT do Modo de Teste
+
+Quando você ativa o modo de teste:
+```json
+{ "manual_mode": true }
+```
+
+Quando você clica em uma saída (exemplo Q1):
+```json
+{
+  "manual_mode": true,
+  "q1_rosca_principal": true
+}
+```
+
+Para sair do modo de teste:
+```json
+{ "manual_mode": false }
+```
+
+### Verificação no Serial Monitor
+
+Ao ativar o modo de teste, você verá no Serial Monitor:
+```
+Modo Manual: ATIVADO
+```
+
+Ao desativar:
+```
+Modo Manual: DESATIVADO
+```
+
+---
+
 ## Próximos Passos
 
 1. ✅ Verificar conexão WiFi do ESP32
@@ -149,4 +212,6 @@ VITE_MQTT_BROKER=wss://72c037df4ced415995ef95169a5c7248.s1.eu.hivemq.cloud:8884/
 3. ✅ Conectar o dashboard usando o botão "Meu ESP32"
 4. ✅ Verificar os logs no console do navegador
 5. ✅ Verificar se os dados estão sendo recebidos no dashboard
-6. Ajustar parâmetros na página Settings e verificar se o ESP32 recebe os comandos
+6. ✅ Testar o modo de teste manual (Test Mode)
+7. ✅ Testar acionamento das entradas conectando pinos ao GND
+8. Ajustar parâmetros na página Settings e verificar se o ESP32 recebe os comandos

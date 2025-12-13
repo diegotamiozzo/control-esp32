@@ -97,6 +97,9 @@ bool alarme_enabled = true;
 int time_chama_atv = 30;
 int time_chama_wait = 5;
 
+// --- Modo de Operação ---
+bool manual_mode = false; // false = automático, true = manual
+
 // --- Entradas (Estado) ---
 struct {
   bool i1_habilitacao;
@@ -174,11 +177,13 @@ void saveSettings() {
 // =================================================================
 
 void readInputs() {
-  inputs.i1_habilitacao = digitalRead(PIN_I1_HABILITACAO);
-  inputs.i2_reset = digitalRead(PIN_I2_RESET);
-  inputs.i3_energia = digitalRead(PIN_I3_ENERGIA);
-  inputs.i4_fim_curso_aberta = digitalRead(PIN_I4_FIM_CURSO_ABERTA);
-  inputs.i5_fim_curso_fechada = digitalRead(PIN_I5_FIM_CURSO_FECHADA);
+  // INPUT_PULLUP: LOW (0) = ativo, HIGH (1) = inativo
+  // Invertemos a lógica para que GND = true (ativo)
+  inputs.i1_habilitacao = !digitalRead(PIN_I1_HABILITACAO);
+  inputs.i2_reset = !digitalRead(PIN_I2_RESET);
+  inputs.i3_energia = !digitalRead(PIN_I3_ENERGIA);
+  inputs.i4_fim_curso_aberta = !digitalRead(PIN_I4_FIM_CURSO_ABERTA);
+  inputs.i5_fim_curso_fechada = !digitalRead(PIN_I5_FIM_CURSO_FECHADA);
 
   float h = dht.readHumidity();
   float t = dht.readTemperature(temp_unit == 'F');
@@ -204,6 +209,11 @@ void applyOutputs() {
 // =================================================================
 
 void controlLogic() {
+  // Se estiver em modo manual, não executa lógica automática
+  if (manual_mode) {
+    applyOutputs();
+    return;
+  }
   // Falha de Energia (I3) - Desliga tudo
   if (!inputs.i3_energia) {
     outputs.q1_rosca_principal = false;
@@ -328,6 +338,25 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (doc.containsKey("temp_unit")) {
     temp_unit = doc["temp_unit"].as<String>()[0];
     settings_changed = true;
+  }
+
+  // Modo Manual
+  if (doc.containsKey("manual_mode")) {
+    manual_mode = doc["manual_mode"].as<bool>();
+    Serial.print("Modo Manual: ");
+    Serial.println(manual_mode ? "ATIVADO" : "DESATIVADO");
+  }
+
+  // Controle Manual das Saídas (somente se manual_mode = true)
+  if (manual_mode) {
+    if (doc.containsKey("q1_rosca_principal")) outputs.q1_rosca_principal = doc["q1_rosca_principal"].as<bool>();
+    if (doc.containsKey("q2_rosca_secundaria")) outputs.q2_rosca_secundaria = doc["q2_rosca_secundaria"].as<bool>();
+    if (doc.containsKey("q3_vibrador")) outputs.q3_vibrador = doc["q3_vibrador"].as<bool>();
+    if (doc.containsKey("q4_ventoinha")) outputs.q4_ventoinha = doc["q4_ventoinha"].as<bool>();
+    if (doc.containsKey("q5_corta_fogo")) outputs.q5_corta_fogo = doc["q5_corta_fogo"].as<bool>();
+    if (doc.containsKey("q6_damper")) outputs.q6_damper = doc["q6_damper"].as<bool>();
+    if (doc.containsKey("q7_alarme")) outputs.q7_alarme = doc["q7_alarme"].as<bool>();
+    applyOutputs(); // Aplica imediatamente
   }
 
   if (settings_changed) {

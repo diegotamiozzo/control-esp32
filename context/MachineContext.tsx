@@ -36,11 +36,11 @@ const DEFAULT_PARAMS: Parameters = {
 };
 
 const DEFAULT_INPUTS: SystemInputs = {
-  i1_habilitacao: false, 
-  i2_reset: false,
-  i3_energia: true,
-  i4_fim_curso_aberta: false,
-  i5_fim_curso_fechada: true,
+  i1_habilitacao: false,  // INPUT_PULLUP: false = sem GND (inativo)
+  i2_reset: false,        // INPUT_PULLUP: false = sem GND (inativo)
+  i3_energia: false,      // INPUT_PULLUP: false = sem GND (sem energia)
+  i4_fim_curso_aberta: false,   // INPUT_PULLUP: false = sem GND (não atingiu fim de curso)
+  i5_fim_curso_fechada: false,  // INPUT_PULLUP: false = sem GND (não atingiu fim de curso)
   i6_temp_sensor: 25,
   umidade_sensor: 50
 };
@@ -389,15 +389,37 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
   }, [isDemoMode]);
 
   const toggleOutputManual = useCallback((key: keyof SystemOutputs) => {
-    // Nota: O firmware ESP32 principal não aceita comandos diretos de saída via MQTT
-    // Apenas funciona em modo DEMO para simulação
-    if (!isDemoMode) return;
-    setState(s => ({ ...s, outputs: { ...s.outputs, [key]: !s.outputs[key] } }));
+    setState(s => {
+        const newOutputs = { ...s.outputs, [key]: !s.outputs[key] };
+
+        // Se não for demo e estiver conectado ao MQTT, enviar comando
+        if (!isDemoMode && clientRef.current?.connected) {
+            const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
+            const payload = {
+                manual_mode: true,
+                [key]: newOutputs[key]
+            };
+            clientRef.current.publish(topicCmd, JSON.stringify(payload));
+            console.log('🎛️ Comando manual enviado:', payload);
+        }
+
+        return { ...s, outputs: newOutputs };
+    });
   }, [isDemoMode]);
 
   const setManualMode = useCallback((enabled: boolean) => {
-    setState(s => ({ ...s, isManualMode: enabled }));
-  }, []);
+    setState(s => {
+        // Se não for demo e estiver conectado ao MQTT, enviar comando
+        if (!isDemoMode && clientRef.current?.connected) {
+            const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
+            const payload = { manual_mode: enabled };
+            clientRef.current.publish(topicCmd, JSON.stringify(payload));
+            console.log('🎛️ Modo manual:', enabled ? 'ATIVADO' : 'DESATIVADO');
+        }
+
+        return { ...s, isManualMode: enabled };
+    });
+  }, [isDemoMode]);
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {

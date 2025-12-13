@@ -121,28 +121,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <div className="bg-slate-50 rounded-2xl p-5 md:p-6 border border-slate-200">
-        <h3 className="text-sm font-semibold text-slate-700 mb-3">Informações do Sistema</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Dispositivo</p>
-            <p className="text-sm font-mono font-medium text-slate-800">{state.macAddress}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Histerese Temp</p>
-            <p className="text-sm font-medium text-slate-800">±{params.hist_temp}°C</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Histerese Umid</p>
-            <p className="text-sm font-medium text-slate-800">±{params.hist_umid}%</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 mb-1">Última atualização</p>
-            <p className="text-sm font-medium text-slate-800">{new Date().toLocaleTimeString('pt-BR')}</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

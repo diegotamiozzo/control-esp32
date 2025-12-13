@@ -9,14 +9,21 @@ const Login: React.FC = () => {
 
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
-    const macRegex = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
-    
-    // For simulation ease, we allow a simple "demo" or a valid MAC
-    if (inputMac.toLowerCase() === 'demo' || macRegex.test(inputMac) || inputMac.length > 0) {
-      setMacAddress(inputMac);
+
+    const cleanMac = inputMac.trim().toUpperCase().replace(/[:-]/g, '');
+
+    if (inputMac.toLowerCase() === 'demo') {
+      setMacAddress('demo');
+    } else if (/^[0-9A-F]{12}$/.test(cleanMac)) {
+      setMacAddress(cleanMac);
     } else {
-      setError('Formato inválido. Use MAC (ex: AA:BB:CC:11:22:33)');
+      setError('Formato inválido. Use 12 caracteres hexadecimais (ex: 48E72999971C ou 48:E7:29:99:97:1C)');
     }
+  };
+
+  const quickConnect = (mac: string) => {
+    setInputMac(mac);
+    setMacAddress(mac);
   };
 
   return (
@@ -71,9 +78,30 @@ const Login: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-              <p className="text-xs text-slate-400">
-                  Insira o endereço MAC do controlador ESP32.
+          <div className="mt-6 space-y-3">
+              <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                      <span className="px-2 bg-white text-slate-400">Acesso Rápido</span>
+                  </div>
+              </div>
+
+              <button
+                  type="button"
+                  onClick={() => quickConnect('48E72999971C')}
+                  className="w-full py-2.5 px-4 rounded-lg border-2 border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all text-sm font-medium text-slate-600 hover:text-indigo-600 flex items-center justify-between group"
+              >
+                  <span className="flex items-center space-x-2">
+                      <Cpu size={16} className="text-slate-400 group-hover:text-indigo-500" />
+                      <span>Meu ESP32</span>
+                  </span>
+                  <span className="font-mono text-xs text-slate-400 group-hover:text-indigo-400">48E72999971C</span>
+              </button>
+
+              <p className="text-xs text-slate-400 text-center pt-2">
+                  Insira o endereço MAC do controlador ESP32 (com ou sem dois pontos).
               </p>
           </div>
         </div>

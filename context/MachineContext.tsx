@@ -109,8 +109,12 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
   useEffect(() => {
     if (!state.macAddress || isDemoMode) return;
 
-    console.log(`Conectando MQTT... Broker: ${MQTT_BROKER_URL}`);
-    
+    console.log('=== INICIANDO CONEXÃO MQTT ===');
+    console.log('Broker:', MQTT_BROKER_URL);
+    console.log('Usuário:', MQTT_USER);
+    console.log('MAC Address:', state.macAddress);
+    console.log('Tópico:', `${TOPIC_PREFIX}/${state.macAddress}/telemetria`);
+
     try {
         const client = mqtt.connect(MQTT_BROKER_URL, {
             keepalive: 60,
@@ -127,15 +131,24 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         const topicTelemetry = `${TOPIC_PREFIX}/${state.macAddress}/telemetria`;
         
         client.on('connect', () => {
-            console.log('MQTT Conectado com sucesso!');
+            console.log('✓ MQTT CONECTADO COM SUCESSO!');
+            console.log('✓ Inscrito em:', topicTelemetry);
             setState(s => ({ ...s, isConnected: true, mqttConnected: true }));
-            client.subscribe(topicTelemetry);
+            client.subscribe(topicTelemetry, (err) => {
+                if (err) {
+                    console.error('Erro ao inscrever no tópico:', err);
+                } else {
+                    console.log('✓ Inscrição confirmada');
+                }
+            });
         });
 
         client.on('message', (topic, message) => {
+            console.log('📨 Mensagem recebida:', topic);
             if (topic === topicTelemetry) {
                 try {
                     const payload = JSON.parse(message.toString());
+                    console.log('📦 Payload:', payload);
                     setState(prev => {
                         const newInputs = { ...prev.inputs };
                         const newOutputs = { ...prev.outputs };

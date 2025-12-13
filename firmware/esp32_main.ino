@@ -52,28 +52,28 @@ const char* root_ca = \
 "-----END CERTIFICATE-----\n";
 
 // =================================================================
-// PINAGEM - ENTRADAS E SAÍDAS
+// PINAGEM - ENTRADAS E SAÍDAS (ATUALIZADO)
 // =================================================================
 
 // --- SENSOR DHT11 ---
-#define DHT_PIN 4
+#define DHT_PIN 32
 #define DHT_TYPE DHT11
 
 // --- ENTRADAS DIGITAIS (I1-I5) ---
-#define PIN_I1_HABILITACAO 12        // I1 - Botão Liga (libera ciclo)
-#define PIN_I2_RESET 13              // I2 - Botão Reset
-#define PIN_I3_ENERGIA 15            // I3 - Falta de energia (relé falta fase)
-#define PIN_I4_FIM_CURSO_ABERTA 16   // I4 - Fim de curso abertura corta fogo
-#define PIN_I5_FIM_CURSO_FECHADA 17  // I5 - Fim de curso fechamento corta fogo
+#define PIN_I1_HABILITACAO 13        // I1 - Botão Liga (libera ciclo)
+#define PIN_I2_RESET 12              // I2 - Botão Reset (CUIDADO: Strapping Pin)
+#define PIN_I3_ENERGIA 14            // I3 - Falta de energia (relé falta fase)
+#define PIN_I4_FIM_CURSO_ABERTA 27   // I4 - Fim de curso abertura corta fogo
+#define PIN_I5_FIM_CURSO_FECHADA 26  // I5 - Fim de curso fechamento corta fogo
 
 // --- SAÍDAS (Q1-Q7) ---
-#define PIN_Q1_ROSCA_PRINCIPAL 25    // Q1 - Rosca Principal
-#define PIN_Q2_ROSCA_SECUNDARIA 26   // Q2 - Rosca Secundária
-#define PIN_Q3_VIBRADOR 27           // Q3 - Vibrador
-#define PIN_Q4_VENTOINHA 14          // Q4 - Ventoinha
-#define PIN_Q5_CORTA_FOGO 32         // Q5 - Corta Fogo
-#define PIN_Q6_DAMPER 33             // Q6 - Damper
-#define PIN_Q7_ALARME 23             // Q7 - Alarme
+#define PIN_Q1_ROSCA_PRINCIPAL 15    // Q1 - Rosca Principal (CUIDADO: Strapping Pin)
+#define PIN_Q2_ROSCA_SECUNDARIA 2    // Q2 - Rosca Secundária (CUIDADO: Strapping Pin / LED Onboard)
+#define PIN_Q3_VIBRADOR 4            // Q3 - Vibrador
+#define PIN_Q4_VENTOINHA 16          // Q4 - Ventoinha
+#define PIN_Q5_CORTA_FOGO 17         // Q5 - Corta Fogo
+#define PIN_Q6_DAMPER 5              // Q6 - Damper
+#define PIN_Q7_ALARME 18             // Q7 - Alarme
 
 // =================================================================
 // VARIÁVEIS DE ESTADO
@@ -337,21 +337,16 @@ void callback(char* topic, byte* payload, unsigned int length) {
   publishTelemetry();
 }
 
-void reconnect() {
-  espClient.setCACert(root_ca);
-
-  while (!client.connected()) {
-    Serial.print("Conectando MQTT...");
-
-    if (client.connect(client_id, mqtt_user, mqtt_pass)) {
-      Serial.println("Conectado!");
-      client.publish(topic_lwt, "online", true);
-      client.subscribe(topic_command);
-    } else {
-      Serial.print("Falha rc=");
-      Serial.println(client.state());
-      delay(5000);
-    }
+// Função de reconexão NÃO BLOQUEANTE
+void attemptMqttConnection() {
+  if (client.connect(client_id, mqtt_user, mqtt_pass)) {
+    Serial.println("MQTT Conectado!");
+    client.publish(topic_lwt, "online", true);
+    client.subscribe(topic_command);
+  } else {
+    Serial.print("Falha MQTT rc=");
+    Serial.print(client.state());
+    Serial.println(" (tentara novamente em breve)");
   }
 }
 
@@ -389,14 +384,15 @@ void setup() {
   wm.setAPCallback([](WiFiManager *myWiFiManager) {
     Serial.println("Modo AP - ESP32_IOT_SETUP");
   });
+  
+  // Define timeout de 3 minutos. Se não configurar, segue em modo offline.
+  wm.setConfigPortalTimeout(180);
 
   if (!wm.autoConnect("ESP32_IOT_SETUP", "senha123")) {
-    Serial.println("Falha WiFi. Reiniciando...");
-    delay(3000);
-    ESP.restart();
+    Serial.println("Falha WiFi. Iniciando em modo OFFLINE.");
+  } else {
+    Serial.println("WiFi conectado!");
   }
-
-  Serial.println("WiFi conectado!");
 
   // Gerar ID e tópicos
   String mac = WiFi.macAddress();
@@ -411,17 +407,27 @@ void setup() {
   Serial.println(client_id);
 
   // Configurar MQTT
+  espClient.setCACert(root_ca); // Configura certificado uma vez
+  client.setBufferSize(768);    // Aumenta buffer para suportar JSON grande
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
-
-  reconnect();
 }
 
 void loop() {
+  // Lógica de reconexão não bloqueante
   if (!client.connected()) {
-    reconnect();
+    static unsigned long lastReconnectAttempt = 0;
+    unsigned long now = millis();
+    // Tenta reconectar a cada 5 segundos, mas SEM parar o loop
+    if (now - lastReconnectAttempt > 5000) {
+      lastReconnectAttempt = now;
+      if (WiFi.status() == WL_CONNECTED) {
+        attemptMqttConnection();
+      }
+    }
+  } else {
+    client.loop();
   }
-  client.loop();
 
   static unsigned long lastRead = 0;
   static unsigned long lastPublish = 0;

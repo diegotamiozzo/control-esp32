@@ -45,6 +45,17 @@ export interface Parameters {
   time_chama_wait: number; // Minutos
 }
 
+export enum MachineState {
+  ST_OFF_IDLE = 0,          // Sistema Parado / Aguardando
+  ST_START_SEQ_1 = 1,       // Partida: Ventoinha + Q2 + Abre Q5
+  ST_START_WAIT_OPEN = 2,   // Partida: Aguarda sensor Q5 abrir
+  ST_RUNNING = 3,           // Operação Normal (Alimentação)
+  ST_STOP_CASCADE_1 = 4,    // Parada: Desliga Alimentação
+  ST_STOP_WAIT_CLOSE = 5,   // Parada: Aguarda Q5 fechar
+  ST_ALARM_CRITICAL = 6,    // Falha Crítica (Falta fase ou Falha Corta-Fogo)
+  ST_PILOT_MODE = 7         // Modo Chama Piloto
+}
+
 export interface AppState {
   macAddress: string | null;
   isConnected: boolean;
@@ -53,6 +64,8 @@ export interface AppState {
   outputs: SystemOutputs;
   params: Parameters;
   isManualMode: boolean;
+  machineState: MachineState;
+  alarmMessage: string;
   // Internal simulation state
   simState: {
     sequenceStep: 'STOPPED' | 'STARTING_FAN' | 'STARTING_AUGER2' | 'OPENING_VALVE' | 'WAITING_OPEN' | 'RUNNING' | 'STOPPING';

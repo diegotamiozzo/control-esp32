@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import mqtt from 'mqtt';
-import { AppState, Parameters, SystemInputs, SystemOutputs } from '../types';
+import { AppState, Parameters, SystemInputs, SystemOutputs, MachineState } from '../types';
 
 // --- CONFIGURAÇÃO MQTT VIA ENV (SAFE ACCESS) ---
 const getEnv = (key: string) => {
@@ -92,6 +92,8 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
       outputs: DEFAULT_OUTPUTS,
       params: parsedParams,
       isManualMode: false,
+      machineState: MachineState.ST_OFF_IDLE,
+      alarmMessage: 'OK',
       simState: {
         sequenceStep: 'STOPPED',
         timerVibrador: 0,
@@ -173,22 +175,22 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
                         const newParams = { ...prev.params };
 
                         // Mapear entradas do ESP32 (I1-I7)
-                        if (payload.i1_habilitacao !== undefined) newInputs.i1_habilitacao = !!payload.i1_habilitacao;
-                        if (payload.i2_reset !== undefined) newInputs.i2_reset = !!payload.i2_reset;
-                        if (payload.i3_energia !== undefined) newInputs.i3_energia = !!payload.i3_energia;
-                        if (payload.i4_fim_curso_aberta !== undefined) newInputs.i4_fim_curso_aberta = !!payload.i4_fim_curso_aberta;
-                        if (payload.i5_fim_curso_fechada !== undefined) newInputs.i5_fim_curso_fechada = !!payload.i5_fim_curso_fechada;
-                        if (payload.i6_temp_sensor !== undefined) newInputs.i6_temp_sensor = Number(payload.i6_temp_sensor);
-                        if (payload.umidade_sensor !== undefined) newInputs.umidade_sensor = Number(payload.umidade_sensor);
+                        if (payload.i1_hab !== undefined) newInputs.i1_habilitacao = !!payload.i1_hab;
+                        if (payload.i2_rst !== undefined) newInputs.i2_reset = !!payload.i2_rst;
+                        if (payload.i3_pwr !== undefined) newInputs.i3_energia = !!payload.i3_pwr;
+                        if (payload.i4_fc_open !== undefined) newInputs.i4_fim_curso_aberta = !!payload.i4_fc_open;
+                        if (payload.i5_fc_close !== undefined) newInputs.i5_fim_curso_fechada = !!payload.i5_fc_close;
+                        if (payload.temp !== undefined) newInputs.i6_temp_sensor = Number(payload.temp);
+                        if (payload.umid !== undefined) newInputs.umidade_sensor = Number(payload.umid);
 
                         // Mapear saídas do ESP32 (Q1-Q7)
-                        if (payload.q1_rosca_principal !== undefined) newOutputs.q1_rosca_principal = !!payload.q1_rosca_principal;
-                        if (payload.q2_rosca_secundaria !== undefined) newOutputs.q2_rosca_secundaria = !!payload.q2_rosca_secundaria;
-                        if (payload.q3_vibrador !== undefined) newOutputs.q3_vibrador = !!payload.q3_vibrador;
-                        if (payload.q4_ventoinha !== undefined) newOutputs.q4_ventoinha = !!payload.q4_ventoinha;
-                        if (payload.q5_corta_fogo !== undefined) newOutputs.q5_corta_fogo = !!payload.q5_corta_fogo;
-                        if (payload.q6_damper !== undefined) newOutputs.q6_damper = !!payload.q6_damper;
-                        if (payload.q7_alarme !== undefined) newOutputs.q7_alarme = !!payload.q7_alarme;
+                        if (payload.q1_main !== undefined) newOutputs.q1_rosca_principal = !!payload.q1_main;
+                        if (payload.q2_sec !== undefined) newOutputs.q2_rosca_secundaria = !!payload.q2_sec;
+                        if (payload.q3_vib !== undefined) newOutputs.q3_vibrador = !!payload.q3_vib;
+                        if (payload.q4_fan !== undefined) newOutputs.q4_ventoinha = !!payload.q4_fan;
+                        if (payload.q5_fire !== undefined) newOutputs.q5_corta_fogo = !!payload.q5_fire;
+                        if (payload.q6_damp !== undefined) newOutputs.q6_damper = !!payload.q6_damp;
+                        if (payload.q7_alarm !== undefined) newOutputs.q7_alarme = !!payload.q7_alarm;
 
                         // Mapear parâmetros do ESP32
                         if (payload.sp_temp !== undefined) newParams.sp_temp = Number(payload.sp_temp);
@@ -197,7 +199,11 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
                         if (payload.hist_umid !== undefined) newParams.hist_umid = Number(payload.hist_umid);
                         if (payload.temp_unit !== undefined) newParams.temp_unit = payload.temp_unit === 'F' ? 'F' : 'C';
 
-                        return { ...prev, inputs: newInputs, outputs: newOutputs, params: newParams };
+                        // Mapear estado da máquina e mensagem de alarme
+                        const machineState = payload.state !== undefined ? Number(payload.state) : prev.machineState;
+                        const alarmMessage = payload.msg !== undefined ? String(payload.msg) : prev.alarmMessage;
+
+                        return { ...prev, inputs: newInputs, outputs: newOutputs, params: newParams, machineState, alarmMessage };
                     });
                 } catch (e) {
                     console.error("Erro parse MQTT", e);

@@ -1,36 +1,45 @@
 # Sistema de Controle Industrial - DHT11 + ESP32
 
-Sistema completo de controle e monitoramento industrial para gerenciamento de processos com temperatura, umidade e múltiplas entradas/saídas.
+Sistema completo de controle e monitoramento industrial para gerenciamento de processos com temperatura, umidade e múltiplas entradas/saídas. **Implementa máquina de estados robusta com sequências de partida/parada controladas.**
 
 ## Características
 
 ### Interface Web
 - Dashboard em tempo real com temperatura e umidade
-- Visualização de fslhas do sistema
+- **Visualização do estado da máquina de estados**
+- **Mensagens de alarme em tempo real**
+- Visualização de falhas do sistema
 - Configuração completa de parâmetros
 - Modo Test Manual para controle direto
 - Interface responsiva e moderna
 - Conexão MQTT com HiveMQ Cloud
 
 ### Sistema de Controle
-- **7 Entradas Digitais** (I1-I7)
-- **7 Saídas** (Q1-Q7)
+- **7 Entradas Digitais** (I1-I7: Habilitação, Reset, Energia, Fins de Curso)
+- **7 Saídas** (Q1-Q7: Roscas, Vibrador, Ventoinha, Corta-Fogo, Damper, Alarme)
+- **Máquina de estados com 8 estados** (Parado, Partida, Operação, Parada, Alarme, Piloto)
 - Controle automático baseado em setpoints
 - Temporizadores cíclicos configuráveis
 - Função Chama Piloto
-- Sistema de alarmes
+- Sistema de alarmes críticos com reset
 - Proteção contra falhas de energia
+- Verificação de sensores de fim de curso
+- Sequências de segurança automáticas
 
 ## Estrutura do Projeto
 
 ```
-├── /pages              # Páginas React (Dashboard, Settings, TestMode)
-├── /components         # Componentes reutilizáveis
-├── /context            # Context API (MachineContext)
-├── /firmware           # Código Arduino ESP32
-│   ├── esp32_main.ino  # Firmware completo
-├── netlify.toml        # Deploy Netlify
-└── .env                # Variáveis de ambiente
+├── /pages                          # Páginas React (Dashboard, Settings, TestMode)
+├── /components                     # Componentes reutilizáveis
+├── /context                        # Context API (MachineContext)
+├── /firmware                       # Código Arduino ESP32
+│   ├── esp32_main_state_machine.ino  # ⭐ Firmware RECOMENDADO (Máquina de Estados)
+│   ├── esp32_main.ino              # Firmware anterior (simples)
+│   └── esp32_main_CORRIGIDO.ino    # Versão intermediária
+├── FIRMWARE_GUIDE.md               # 📘 Guia completo do firmware
+├── SETUP_MQTT.md                   # Configuração MQTT
+├── netlify.toml                    # Deploy Netlify
+└── .env                            # Variáveis de ambiente
 ```
 
 ## Tecnologias
@@ -126,29 +135,55 @@ npm run build
 - **Tempo de Ativação**: Duração em segundos
 - **Tempo de Espera**: Permanência dentro da histerese (minutos)
 
-## Lógica de Controle
+## Lógica de Controle (Máquina de Estados)
+
+### Estados da Máquina
+
+O sistema implementa 8 estados principais:
+
+| Estado | Código | Descrição |
+|--------|--------|-----------|
+| **ST_OFF_IDLE** | 0 | Sistema Parado / Aguardando |
+| **ST_START_SEQ_1** | 1 | Partida: Ventoinha + Q2 + Abre Q5 |
+| **ST_START_WAIT_OPEN** | 2 | Partida: Aguarda sensor Q5 abrir |
+| **ST_RUNNING** | 3 | Operação Normal (Alimentação) |
+| **ST_STOP_CASCADE_1** | 4 | Parada: Desliga Alimentação |
+| **ST_STOP_WAIT_CLOSE** | 5 | Parada: Aguarda Q5 fechar |
+| **ST_ALARM_CRITICAL** | 6 | Falha Crítica (Falta fase ou Falha Corta-Fogo) |
+| **ST_PILOT_MODE** | 7 | Modo Chama Piloto |
 
 ### Condições de Segurança
 
 **Habilitação Geral (I1)**
 - Sistema só funciona se I1 estiver ativo
-- Se I1 desligar → Parada em Cascata
+- Se I1 desligar → Parada em Cascata Controlada
 
 **Falha de Energia (I3)**
 - Se I3 desligar:
+  - Transição imediata para **ST_ALARM_CRITICAL**
   - Desliga todas as saídas Q1-Q6
-  - Liga Alarme Q7
-  - Exige: Energia + I1 + Reset (Botão de pulso)
+  - Liga Alarme Q7 (cíclico)
+  - **Reset:** Energia + I1 + I2 (Botão Reset)
 
-### Sequência de Partida
+### Sequência de Partida (Controlada)
 
-Condição: I1 ativo + I3 ativo + Temperatura < Setpoint
+**Condições:** I1 ativo + I3 ativo + Temperatura < (SP - Histerese)
 
+**Estado ST_START_SEQ_1:**
 1. Liga Ventoinha (Q4)
 2. Liga Rosca Secundária (Q2) em ciclo
 3. Aciona Corta-Fogo (Q5) para abrir
-4. Aguarda Abertura Total (I4)
-5. Liga Rosca Principal (Q1)
+
+**Estado ST_START_WAIT_OPEN:**
+1. Mantém Q4, Q2, Q5 ativos
+2. **Aguarda sensor I4** (fim de curso aberta)
+3. Quando I4 ativo → Transição para **ST_RUNNING**
+
+**Estado ST_RUNNING:**
+1. Liga Rosca Principal (Q1)
+2. Liga Vibrador (Q3) em ciclo
+3. Mantém Q4, Q2, Q5 ativos
+4. Q6 controlado independentemente (umidade)
 
 ### Regime de Trabalho
 
@@ -162,20 +197,31 @@ Condição: I1 ativo + I3 ativo + Temperatura < Setpoint
 - Umidade < SP - Histerese → Abre
 - Umidade > SP + Histerese → Fecha
 
-### Sequência de Parada
+### Sequência de Parada (Controlada)
 
-Condição: Temperatura ≥ Setpoint OU I1 desligado
+**Condições:** Temperatura ≥ Setpoint OU I1 desligado
 
-**Etapa 1:**
+**Estado ST_STOP_CASCADE_1:**
 1. Desliga Q1 (Rosca Principal)
 2. Desliga Q3 (Vibrador)
 3. Desliga Q2 (Rosca Secundária)
 4. Desliga Q4 (Ventoinha)
+5. Desenergiza Q5 → Inicia fechamento
+6. Transição para **ST_STOP_WAIT_CLOSE**
 
-**Etapa 2:**
-1. Desenergiza Q5 → Fechamento
-2. Monitora I5
-3. Se não fechar em 10s → Alarme de Falha
+**Estado ST_STOP_WAIT_CLOSE:**
+1. Mantém Q5 desenergizado
+2. **Monitora sensor I5** (fim de curso fechada)
+3. Se I5 ativo → Retorna para **ST_OFF_IDLE**
+4. **Se não fechar em 10s** → **ST_ALARM_CRITICAL**
+
+### Modo Chama Piloto
+
+**Condições:** Temperatura na histerese (SP > T > SP-Hist)
+
+1. Aguarda tempo configurável (time_chama_wait)
+2. Liga Q4 (Ventoinha) por tempo configurável (time_chama_atv)
+3. Desliga e aguarda novamente
 
 ## Configuração do ESP32
 
@@ -186,28 +232,31 @@ Condição: Temperatura ≥ Setpoint OU I1 desligado
 - 7 Relés para saídas Q1-Q7
 - 5 Botões/sensores para entradas I1-I5
 
-### Pinagem do Firmware
+### Pinagem do Firmware (esp32_main_state_machine.ino)
 
 ```cpp
-// Sensor
-#define DHT_PIN 32
+// Sensor DHT11
+#define DHT_PIN 23
+#define DHT_TYPE DHT11
 
-// Entradas
+// Entradas (INPUT_PULLUP - Ativo em GND)
 #define PIN_I1_HABILITACAO 13
-#define PIN_I2_RESET 12
-#define PIN_I3_ENERGIA 14
-#define PIN_I4_FIM_CURSO_ABERTA 27
-#define PIN_I5_FIM_CURSO_FECHADA 26
+#define PIN_I2_RESET 14
+#define PIN_I3_ENERGIA 27
+#define PIN_I4_FIM_CURSO_ABERTA 26
+#define PIN_I5_FIM_CURSO_FECHADA 25
 
-// Saídas
-#define PIN_Q1_ROSCA_PRINCIPAL 15
-#define PIN_Q2_ROSCA_SECUNDARIA 2
-#define PIN_Q3_VIBRADOR 4
-#define PIN_Q4_VENTOINHA 16
-#define PIN_Q5_CORTA_FOGO 17
-#define PIN_Q6_DAMPER 5
-#define PIN_Q7_ALARME 18
+// Saídas (Ativo em HIGH)
+#define PIN_Q1_ROSCA_PRINCIPAL 33
+#define PIN_Q2_ROSCA_SECUNDARIA 32
+#define PIN_Q3_VIBRADOR 15
+#define PIN_Q4_VENTOINHA 4
+#define PIN_Q5_CORTA_FOGO 16
+#define PIN_Q6_DAMPER 17
+#define PIN_Q7_ALARME 5
 ```
+
+**⚠️ IMPORTANTE:** As entradas usam INPUT_PULLUP, então o acionamento é feito conectando o pino ao GND (lógica invertida).
 
 ### Bibliotecas Necessárias
 
@@ -221,10 +270,16 @@ Instale via Arduino IDE (Library Manager):
 
 ### Upload do Código
 
-1. Abra `/firmware/esp32_main.ino` no Arduino IDE
+1. Abra `/firmware/esp32_main_state_machine.ino` no Arduino IDE
 2. Selecione a placa: **ESP32 Dev Module**
-3. Selecione a porta serial correta
-4. Clique em Upload (Ctrl+U)
+3. Configure:
+   - Upload Speed: 115200
+   - Flash Size: 4MB
+   - Partition Scheme: "Default 4MB with spiffs"
+4. Selecione a porta serial correta
+5. Clique em Upload (Ctrl+U)
+
+**📘 Para detalhes completos, consulte [FIRMWARE_GUIDE.md](FIRMWARE_GUIDE.md)**
 
 ### Primeira Configuração
 
@@ -253,6 +308,8 @@ Instale via Arduino IDE (Library Manager):
 
 ### 2. Dashboard
 Visualize em tempo real:
+- **Estado da Máquina** (8 estados possíveis)
+- **Mensagem de Alarme** (OK / Falha Específica)
 - Temperatura e Umidade com indicadores visuais
 - Status do Sistema (I1 - Liga/Desliga)
 - Status de Energia (I3 - Normal/Falha)
@@ -282,22 +339,25 @@ dispositivo/{MAC_ADDRESS}/conexao     - Status conexão
 
 ### Payload Telemetria (ESP32 → Web)
 
+**Firmware State Machine:**
 ```json
 {
-  "i1_habilitacao": true,
-  "i2_reset": false,
-  "i3_energia": true,
-  "i4_fim_curso_aberta": false,
-  "i5_fim_curso_fechada": true,
-  "i6_temp_sensor": 25.5,
-  "umidade_sensor": 65.2,
-  "q1_rosca_principal": true,
-  "q2_rosca_secundaria": false,
-  "q3_vibrador": true,
-  "q4_ventoinha": true,
-  "q5_corta_fogo": false,
-  "q6_damper": true,
-  "q7_alarme": false,
+  "i1_hab": true,
+  "i2_rst": false,
+  "i3_pwr": true,
+  "i4_fc_open": true,
+  "i5_fc_close": false,
+  "temp": 25.5,
+  "umid": 65.2,
+  "q1_main": true,
+  "q2_sec": false,
+  "q3_vib": true,
+  "q4_fan": true,
+  "q5_fire": true,
+  "q6_damp": false,
+  "q7_alarm": false,
+  "state": 3,
+  "msg": "OK",
   "sp_temp": 25.0,
   "sp_umid": 60.0,
   "hist_temp": 2.0,
@@ -305,6 +365,10 @@ dispositivo/{MAC_ADDRESS}/conexao     - Status conexão
   "temp_unit": "C"
 }
 ```
+
+**Campos importantes:**
+- `state`: Estado da máquina (0-7)
+- `msg`: Mensagem de status ("OK" ou descrição da falha)
 
 ### Payload Comando (Web → ESP32)
 

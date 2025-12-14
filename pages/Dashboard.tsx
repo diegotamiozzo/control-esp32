@@ -1,10 +1,11 @@
 import React from 'react';
 import { useMachine } from '../context/MachineContext';
-import { Thermometer, Droplets, Wifi, WifiOff, Power, Zap, ShieldAlert, CirclePlay, CircleStop, CircleCheck, TriangleAlert } from 'lucide-react';
+import { MachineState } from '../types';
+import { Thermometer, Droplets, Wifi, WifiOff, Power, Zap, ShieldAlert, CirclePlay, CircleStop, CircleCheck, TriangleAlert, Activity } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { state } = useMachine();
-  const { inputs, outputs, params, mqttConnected } = state;
+  const { inputs, outputs, params, mqttConnected, machineState, alarmMessage } = state;
 
   const tempPercentage = Math.min(100, Math.max(0, (inputs.i6_temp_sensor / 100) * 100));
   const humPercentage = Math.min(100, Math.max(0, inputs.umidade_sensor));
@@ -15,6 +16,34 @@ const Dashboard: React.FC = () => {
   const isSystemOn = inputs.i1_habilitacao;
   const isPowerOn = inputs.i3_energia;
   const isAlarmActive = outputs.q7_alarme;
+
+  const getStateName = (state: MachineState): string => {
+    switch (state) {
+      case MachineState.ST_OFF_IDLE: return 'PARADO / AGUARDANDO';
+      case MachineState.ST_START_SEQ_1: return 'PARTIDA (Iniciando)';
+      case MachineState.ST_START_WAIT_OPEN: return 'PARTIDA (Aguardando Abertura)';
+      case MachineState.ST_RUNNING: return 'OPERAÇÃO NORMAL';
+      case MachineState.ST_STOP_CASCADE_1: return 'PARADA (Desligando)';
+      case MachineState.ST_STOP_WAIT_CLOSE: return 'PARADA (Aguardando Fechamento)';
+      case MachineState.ST_ALARM_CRITICAL: return 'ALARME CRÍTICO';
+      case MachineState.ST_PILOT_MODE: return 'MODO CHAMA PILOTO';
+      default: return 'DESCONHECIDO';
+    }
+  };
+
+  const getStateColor = (state: MachineState): string => {
+    switch (state) {
+      case MachineState.ST_OFF_IDLE: return 'bg-slate-100 text-slate-700 border-slate-200';
+      case MachineState.ST_START_SEQ_1:
+      case MachineState.ST_START_WAIT_OPEN: return 'bg-amber-100 text-amber-700 border-amber-200';
+      case MachineState.ST_RUNNING: return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case MachineState.ST_STOP_CASCADE_1:
+      case MachineState.ST_STOP_WAIT_CLOSE: return 'bg-blue-100 text-blue-700 border-blue-200';
+      case MachineState.ST_ALARM_CRITICAL: return 'bg-rose-100 text-rose-700 border-rose-200';
+      case MachineState.ST_PILOT_MODE: return 'bg-orange-100 text-orange-700 border-orange-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -121,6 +150,31 @@ const Dashboard: React.FC = () => {
                 : 'bg-amber-100 text-amber-700'
             }`}>
               {isHumOk ? 'NORMAL' : 'FORA DO RANGE'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 md:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 md:p-3 bg-blue-50 text-blue-600 rounded-xl">
+              <Activity size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">Estado da Máquina</h3>
+              <p className="text-sm text-slate-500">Máquina de Estados</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className={`flex-1 px-4 py-3 rounded-xl border-2 font-bold text-center ${getStateColor(machineState)}`}>
+            {getStateName(machineState)}
+          </div>
+          <div className="flex-1 flex items-center space-x-2">
+            <span className="text-sm font-medium text-slate-600">Mensagem:</span>
+            <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${alarmMessage === 'OK' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+              {alarmMessage}
             </span>
           </div>
         </div>

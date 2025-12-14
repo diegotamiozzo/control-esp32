@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.87.1",
     "lucide-react": "0.462.0",
     "mqtt": "5.3.4",
     "react": "^19.2.3",

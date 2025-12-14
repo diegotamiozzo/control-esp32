@@ -1,11 +1,37 @@
-import React, { useState } from 'react';
-import { Cpu, ArrowRight, Building2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Cpu, ArrowRight, Building2, Trash2, Clock } from 'lucide-react';
 import { useMachine } from '../context/MachineContext';
 
 const Login: React.FC = () => {
   const { setMacAddress } = useMachine();
-  const [inputMac, setInputMac] = useState('48E72999971C');
+  const [inputMac, setInputMac] = useState('');
   const [error, setError] = useState('');
+  const [savedMacs, setSavedMacs] = useState<string[]>([]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('savedMacList');
+    if (stored) {
+      try {
+        setSavedMacs(JSON.parse(stored));
+      } catch (e) {
+        console.error('Erro ao carregar MACs salvos', e);
+      }
+    }
+  }, []);
+
+  const saveMacToList = (mac: string) => {
+    if (!savedMacs.includes(mac)) {
+      const newList = [mac, ...savedMacs].slice(0, 5);
+      setSavedMacs(newList);
+      localStorage.setItem('savedMacList', JSON.stringify(newList));
+    }
+  };
+
+  const removeMac = (mac: string) => {
+    const newList = savedMacs.filter(m => m !== mac);
+    setSavedMacs(newList);
+    localStorage.setItem('savedMacList', JSON.stringify(newList));
+  };
 
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,10 +41,15 @@ const Login: React.FC = () => {
     if (inputMac.toLowerCase() === 'demo') {
       setMacAddress('demo');
     } else if (/^[0-9A-F]{12}$/.test(cleanMac)) {
+      saveMacToList(cleanMac);
       setMacAddress(cleanMac);
     } else {
       setError('Formato inválido. Use 12 caracteres hexadecimais (ex: 48E72999971C ou 48:E7:29:99:97:1C)');
     }
+  };
+
+  const connectToSavedMac = (mac: string) => {
+    setMacAddress(mac);
   };
 
   return (
@@ -78,6 +109,40 @@ const Login: React.FC = () => {
                   Insira o endereço MAC do controlador ESP32 (com ou sem dois pontos).
               </p>
           </div>
+
+          {savedMacs.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-slate-200">
+              <div className="flex items-center space-x-2 mb-3">
+                <Clock size={16} className="text-slate-400" />
+                <h3 className="text-sm font-semibold text-slate-700">Dispositivos Recentes</h3>
+              </div>
+              <div className="space-y-2">
+                {savedMacs.map((mac) => (
+                  <div
+                    key={mac}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
+                  >
+                    <button
+                      onClick={() => connectToSavedMac(mac)}
+                      className="flex-1 text-left font-mono text-sm text-slate-700 group-hover:text-indigo-700 font-medium"
+                    >
+                      {mac}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeMac(mac);
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                      title="Remover"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Menu, Wifi, WifiOff, Server, ServerOff } from 'lucide-react';
 import { useMachine } from '../context/MachineContext';
 import Sidebar from './Sidebar';
+import MqttDebug from './MqttDebug';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -69,6 +70,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <p>© 2024 Industrial Systems Co.</p>
         </div>
       </footer>
+
+      <MqttDebug />
     </div>
   );
 };

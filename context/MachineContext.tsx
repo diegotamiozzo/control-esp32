@@ -12,9 +12,9 @@ const getEnv = (key: string) => {
   }
 };
 
-const MQTT_BROKER_URL = getEnv('VITE_MQTT_BROKER') || 'wss://broker.hivemq.com:8000/mqtt';
-const MQTT_USER = getEnv('VITE_MQTT_USERNAME');
-const MQTT_PASS = getEnv('VITE_MQTT_PASSWORD');
+const MQTT_BROKER_URL = getEnv('VITE_MQTT_BROKER') || '';
+const MQTT_USER = getEnv('VITE_MQTT_USERNAME') || '';
+const MQTT_PASS = getEnv('VITE_MQTT_PASSWORD') || '';
 
 const TOPIC_PREFIX = 'dispositivo';
 
@@ -109,11 +109,20 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
   useEffect(() => {
     if (!state.macAddress || isDemoMode) return;
 
+    if (!MQTT_BROKER_URL || !MQTT_USER || !MQTT_PASS) {
+      console.error('❌ MQTT não configurado! Verifique o arquivo .env');
+      console.error('VITE_MQTT_BROKER:', MQTT_BROKER_URL);
+      console.error('VITE_MQTT_USERNAME:', MQTT_USER ? '***' : 'vazio');
+      console.error('VITE_MQTT_PASSWORD:', MQTT_PASS ? '***' : 'vazio');
+      return;
+    }
+
     console.log('=== INICIANDO CONEXÃO MQTT ===');
     console.log('Broker:', MQTT_BROKER_URL);
     console.log('Usuário:', MQTT_USER);
     console.log('MAC Address:', state.macAddress);
-    console.log('Tópico:', `${TOPIC_PREFIX}/${state.macAddress}/telemetria`);
+    console.log('Tópico telemetria:', `${TOPIC_PREFIX}/${state.macAddress}/telemetria`);
+    console.log('Tópico comando:', `${TOPIC_PREFIX}/${state.macAddress}/comando`);
 
     try {
         const client = mqtt.connect(MQTT_BROKER_URL, {
@@ -124,7 +133,8 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
             protocolId: 'MQTT',
             protocolVersion: 4,
             clean: true,
-            reconnectPeriod: 2000,
+            reconnectPeriod: 5000,
+            connectTimeout: 10000,
         });
 
         clientRef.current = client;

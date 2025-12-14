@@ -9,11 +9,14 @@ const Settings: React.FC = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<Parameters>(state.params);
   const [isSaved, setIsSaved] = useState(false);
+  const [isModified, setIsModified] = useState(false);
 
   // Sync if params change externally
   useEffect(() => {
-    setFormData(state.params);
-  }, [state.params]);
+    if (!isModified) {
+      setFormData(state.params);
+    }
+  }, [state.params, isModified]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -28,11 +31,13 @@ const Settings: React.FC = () => {
 
     setFormData(prev => ({ ...prev, [name]: newValue }));
     setIsSaved(false);
+    setIsModified(true);
   };
 
   const handleCheckboxChange = (name: keyof Parameters) => (e: React.ChangeEvent<HTMLInputElement>) => {
      setFormData(prev => ({ ...prev, [name]: e.target.checked }));
      setIsSaved(false);
+     setIsModified(true);
   }
 
   const handleSave = (e: React.FormEvent) => {

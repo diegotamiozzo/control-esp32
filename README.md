@@ -6,14 +6,14 @@ Sistema completo de controle e monitoramento industrial para gerenciamento de pr
 
 ### Interface Web
 - Dashboard em tempo real com temperatura e umidade
-- Visualização de estados do sistema (I1, I3, Q7)
+- Visualização de fslhas do sistema
 - Configuração completa de parâmetros
 - Modo Test Manual para controle direto
 - Interface responsiva e moderna
 - Conexão MQTT com HiveMQ Cloud
 
 ### Sistema de Controle
-- **7 Entradas Digitais/Analógicas** (I1-I7)
+- **7 Entradas Digitais** (I1-I7)
 - **7 Saídas** (Q1-Q7)
 - Controle automático baseado em setpoints
 - Temporizadores cíclicos configuráveis
@@ -28,8 +28,7 @@ Sistema completo de controle e monitoramento industrial para gerenciamento de pr
 ├── /components         # Componentes reutilizáveis
 ├── /context            # Context API (MachineContext)
 ├── /firmware           # Código Arduino ESP32
-│   ├── esp32_main.ino  # Firmware completo atualizado
-│   └── esp32.txt       # Firmware base original
+│   ├── esp32_main.ino  # Firmware completo
 ├── netlify.toml        # Deploy Netlify
 └── .env                # Variáveis de ambiente
 ```
@@ -66,8 +65,7 @@ Arquivo `.env` já configurado:
 VITE_MQTT_BROKER=wss://72c037df4ced415995ef95169a5c7248.s1.eu.hivemq.cloud:8884/mqtt
 VITE_MQTT_USERNAME=esp32_cliente02
 VITE_MQTT_PASSWORD=Corcel@73
-VITE_SUPABASE_URL=sua_url
-VITE_SUPABASE_ANON_KEY=sua_key
+
 ```
 
 ### 3. Iniciar Desenvolvimento
@@ -89,12 +87,12 @@ npm run build
 | ID  | Nome                    | Descrição                          | Tipo     |
 |-----|-------------------------|------------------------------------|----------|
 | I1  | Botão Liga              | Libera o ciclo automático          | Digital  |
-| I2  | Botão Reset             | Reset de falhas                    | Digital  |
+| I2  | Botão Reset             | Reset de falhas (Pulso)            | Digital  |
 | I3  | Falta de Energia        | Sinal relé falta fase              | Digital  |
 | I4  | Fim Curso Aberta        | Sensor abertura corta fogo         | Digital  |
 | I5  | Fim Curso Fechada       | Sensor fechamento corta fogo       | Digital  |
-| I6  | Temperatura             | Sensor DHT11 (0-165°C)             | Analógico|
-| I7  | Umidade                 | Sensor DHT11 (20-100%)             | Analógico|
+| I6  | Temperatura             | Sensor DHT11 (0-165°C)             |     DHT11 |
+| I7  | Umidade                 | Sensor DHT11 (20-100%)             | DHT11 |
 
 ### Saídas (Outputs)
 
@@ -140,7 +138,7 @@ npm run build
 - Se I3 desligar:
   - Desliga todas as saídas Q1-Q6
   - Liga Alarme Q7
-  - Exige: Energia + I1 + Reset
+  - Exige: Energia + I1 + Reset (Botão de pulso)
 
 ### Sequência de Partida
 
@@ -187,29 +185,28 @@ Condição: Temperatura ≥ Setpoint OU I1 desligado
 - DHT11
 - 7 Relés para saídas Q1-Q7
 - 5 Botões/sensores para entradas I1-I5
-- Cabos jumper
 
 ### Pinagem do Firmware
 
 ```cpp
 // Sensor
-#define DHT_PIN 4
+#define DHT_PIN 32
 
 // Entradas
-#define PIN_I1_HABILITACAO 12
-#define PIN_I2_RESET 13
-#define PIN_I3_ENERGIA 15
-#define PIN_I4_FIM_CURSO_ABERTA 16
-#define PIN_I5_FIM_CURSO_FECHADA 17
+#define PIN_I1_HABILITACAO 13
+#define PIN_I2_RESET 12
+#define PIN_I3_ENERGIA 14
+#define PIN_I4_FIM_CURSO_ABERTA 27
+#define PIN_I5_FIM_CURSO_FECHADA 26
 
 // Saídas
-#define PIN_Q1_ROSCA_PRINCIPAL 25
-#define PIN_Q2_ROSCA_SECUNDARIA 26
-#define PIN_Q3_VIBRADOR 27
-#define PIN_Q4_VENTOINHA 14
-#define PIN_Q5_CORTA_FOGO 32
-#define PIN_Q6_DAMPER 33
-#define PIN_Q7_ALARME 23
+#define PIN_Q1_ROSCA_PRINCIPAL 15
+#define PIN_Q2_ROSCA_SECUNDARIA 2
+#define PIN_Q3_VIBRADOR 4
+#define PIN_Q4_VENTOINHA 16
+#define PIN_Q5_CORTA_FOGO 17
+#define PIN_Q6_DAMPER 5
+#define PIN_Q7_ALARME 18
 ```
 
 ### Bibliotecas Necessárias

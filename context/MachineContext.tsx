@@ -95,7 +95,15 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
       simState: {
         sequenceStep: 'STOPPED',
         timerVibrador: 0,
-        timerRoscaSec: 0
+        timerRoscaSec: 0,
+        timerAlarme: 0,
+        alarmActive: false,
+        alarmReseted: false,
+        prevI2Reset: false,
+        chamaPilotoTimer: 0,
+        chamaPilotoWaitTimer: 0,
+        chamaPilotoActive: false,
+        tempInHysteresisTimer: 0
       }
     };
   });
@@ -228,135 +236,177 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         let nextOutputs = { ...outputs };
         let nextSimState = { ...simState };
         let nextInputs = { ...inputs };
-        
-        let alarmTriggered = false;
 
         // -------------------------------
-        // 1. Falha de Energia (I3) - PDF 2.1
+        // DETECTAR PULSO DE RESET (I2)
+        // -------------------------------
+        const resetPulse = inputs.i2_reset && !simState.prevI2Reset;
+        nextSimState.prevI2Reset = inputs.i2_reset;
+
+        if (resetPulse) {
+            nextSimState.alarmActive = false;
+            nextSimState.alarmReseted = true;
+            nextSimState.timerAlarme = 0;
+            nextOutputs.q7_alarme = false;
+        }
+
+        // -------------------------------
+        // 1. FALHA DE ENERGIA (I3)
         // -------------------------------
         if (!inputs.i3_energia) {
-            // Desliga tudo, liga alarme
             nextOutputs = {
-                q1_rosca_principal: false, q2_rosca_secundaria: false, q3_vibrador: false,
-                q4_ventoinha: false, q5_corta_fogo: false, q6_damper: false, q7_alarme: true
+                q1_rosca_principal: false,
+                q2_rosca_secundaria: false,
+                q3_vibrador: false,
+                q4_ventoinha: false,
+                q5_corta_fogo: false,
+                q6_damper: false,
+                q7_alarme: true
             };
             nextSimState.sequenceStep = 'STOPPED';
+            nextSimState.alarmActive = true;
+            nextSimState.alarmReseted = false;
             return { ...curr, outputs: nextOutputs, simState: nextSimState };
         }
 
         // -------------------------------
-        // 2. Parada em Cascata ou Habilitação Off (I1) - PDF 2.4
+        // 2. SEQUÊNCIA DE CONTROLE
         // -------------------------------
-        const tempHigh = inputs.i6_temp_sensor >= params.sp_temp;
-        
-        if (!inputs.i1_habilitacao || tempHigh) {
-            // Etapa 1: Desliga Q1, Q3, Q2, Q4
-            nextOutputs.q1_rosca_principal = false;
-            nextOutputs.q3_vibrador = false;
-            nextOutputs.q2_rosca_secundaria = false;
-            nextOutputs.q4_ventoinha = false;
-            
-            // Etapa 2: Desenergiza Q5 -> Fechamento
-            nextOutputs.q5_corta_fogo = false; 
-            nextSimState.sequenceStep = 'STOPPED';
+        const tempBelowSetpoint = inputs.i6_temp_sensor < params.sp_temp;
+        const tempInHysteresis = Math.abs(inputs.i6_temp_sensor - params.sp_temp) <= params.hist_temp;
 
-            // Monitora I5 (Fim de curso fechado). Se não fechar em 10s -> Alarme (Simulado aqui como imediato se "falhar")
-            // Na simulação, fechamos a válvula após um tempo random
-            if (!nextOutputs.q5_corta_fogo && !nextInputs.i5_fim_curso_fechada) {
-                 if (Math.random() > 0.7) {
-                    nextInputs.i5_fim_curso_fechada = true;
-                    nextInputs.i4_fim_curso_aberta = false;
-                 }
-                 // Se passasse 10s real, ativaria alarme.
-            }
-        } 
-        // -------------------------------
-        // 3. Sequência de Partida (Start) - PDF 2.2
-        // -------------------------------
-        else if (inputs.i1_habilitacao && !tempHigh) {
-            
-            // 1. Acionamento Inicial
-            nextOutputs.q4_ventoinha = true; // Liga Ventoinha
-            
-            // Liga Rosca Secundária (Q2) ENQUANTO Q4 ligado
-            // + Lógica Cíclica da Q2 (PDF 1.3)
+        // CONDIÇÃO DE PARTIDA: I1 ativo + Temperatura < Setpoint
+        if (inputs.i1_habilitacao && tempBelowSetpoint) {
+
+            // Liga Ventoinha (Q4)
+            nextOutputs.q4_ventoinha = true;
+
+            // Liga Rosca Secundária (Q2) em ciclo
             nextSimState.timerRoscaSec++;
             const cycleSec = params.time_rosca_sec_on + params.time_rosca_sec_off;
             const posSec = nextSimState.timerRoscaSec % cycleSec;
             nextOutputs.q2_rosca_secundaria = (posSec < params.time_rosca_sec_on);
 
-            nextOutputs.q5_corta_fogo = true; // Abre Corta Fogo
+            // Aciona Corta-Fogo (Q5) para abrir
+            nextOutputs.q5_corta_fogo = true;
 
             // Simulação Movimento Válvula
             if (nextOutputs.q5_corta_fogo && !nextInputs.i4_fim_curso_aberta) {
-                 nextInputs.i5_fim_curso_fechada = false;
-                 if (Math.random() > 0.85) nextInputs.i4_fim_curso_aberta = true; 
+                nextInputs.i5_fim_curso_fechada = false;
+                if (Math.random() > 0.85) {
+                    nextInputs.i4_fim_curso_aberta = true;
+                }
             }
 
-            // 2. Liberação da Carga Principal (Q1)
-            // Ao detectar I4 (Aberta)
+            // Quando detectar abertura total (I4), liga Rosca Principal (Q1) e Vibrador (Q3)
             if (inputs.i4_fim_curso_aberta) {
                 nextOutputs.q1_rosca_principal = true;
-                nextSimState.sequenceStep = 'RUNNING';
-            } else {
-                nextOutputs.q1_rosca_principal = false;
-            }
 
-            // 3. Vibrador (Q3) - Cíclico, só se Q1 ligado
-            if (nextOutputs.q1_rosca_principal) {
+                // Vibrador (Q3) - Cíclico, respeitando tempos ON/OFF
                 nextSimState.timerVibrador++;
                 const cycleVib = params.time_vibrador_on + params.time_vibrador_off;
                 const posVib = nextSimState.timerVibrador % cycleVib;
                 nextOutputs.q3_vibrador = (posVib < params.time_vibrador_on);
+
+                nextSimState.sequenceStep = 'RUNNING';
             } else {
+                nextOutputs.q1_rosca_principal = false;
                 nextOutputs.q3_vibrador = false;
                 nextSimState.timerVibrador = 0;
             }
         }
+        // CONDIÇÃO DE PARADA: I1 desligado OU Temperatura >= Setpoint
+        else if (!inputs.i1_habilitacao || !tempBelowSetpoint) {
+            // Desliga Q1, Q3, Q2, Q4
+            nextOutputs.q1_rosca_principal = false;
+            nextOutputs.q3_vibrador = false;
+            nextOutputs.q2_rosca_secundaria = false;
+            nextOutputs.q4_ventoinha = false;
+
+            // Desenergiza Q5 -> Fechamento
+            nextOutputs.q5_corta_fogo = false;
+            nextSimState.sequenceStep = 'STOPPED';
+            nextSimState.timerVibrador = 0;
+            nextSimState.timerRoscaSec = 0;
+
+            // Simulação Fechamento Válvula
+            if (!nextOutputs.q5_corta_fogo && !nextInputs.i5_fim_curso_fechada) {
+                nextInputs.i4_fim_curso_aberta = false;
+                if (Math.random() > 0.7) {
+                    nextInputs.i5_fim_curso_fechada = true;
+                }
+            }
+        }
 
         // -------------------------------
-        // 4. Controle de Umidade (Independente) - PDF 2.6
+        // 3. CHAMA PILOTO
         // -------------------------------
-        // Damper Q6
+        if (tempInHysteresis) {
+            nextSimState.tempInHysteresisTimer++;
+            const waitMinutes = params.time_chama_wait * 60; // Converter minutos para segundos
+
+            if (nextSimState.tempInHysteresisTimer >= waitMinutes && !nextSimState.chamaPilotoActive) {
+                nextSimState.chamaPilotoActive = true;
+                nextSimState.chamaPilotoTimer = 0;
+            }
+        } else {
+            nextSimState.tempInHysteresisTimer = 0;
+            nextSimState.chamaPilotoActive = false;
+            nextSimState.chamaPilotoTimer = 0;
+        }
+
+        // Executar Chama Piloto se ativo
+        if (nextSimState.chamaPilotoActive) {
+            nextSimState.chamaPilotoTimer++;
+            if (nextSimState.chamaPilotoTimer <= params.time_chama_atv) {
+                // Lógica da chama piloto aqui
+                // Por exemplo, manter ventoinha ligada mesmo sem outras condições
+            } else {
+                nextSimState.chamaPilotoActive = false;
+            }
+        }
+
+        // -------------------------------
+        // 4. CONTROLE DE UMIDADE (Independente)
+        // -------------------------------
         if (inputs.umidade_sensor < (params.sp_umid - params.hist_umid)) {
-            nextOutputs.q6_damper = true; // Aberto (Muito seco?) - Logica padrão: precisa umidificar? Ou Damper abre pra secar?
-            // Assumindo PDF: Umidade < SP -> Aberto.
+            nextOutputs.q6_damper = true;
         } else if (inputs.umidade_sensor > (params.sp_umid + params.hist_umid)) {
-            nextOutputs.q6_damper = false; // Fechado
-        }
-
-        // Alarme de Umidade (Fora da faixa)
-        if (inputs.umidade_sensor < (params.sp_umid - params.hist_umid) || 
-            inputs.umidade_sensor > (params.sp_umid + params.hist_umid)) {
-            alarmTriggered = true;
+            nextOutputs.q6_damper = false;
         }
 
         // -------------------------------
-        // 5. Controle Geral do Alarme (Q7)
+        // 5. ALARME (Q7)
         // -------------------------------
-        if (alarmTriggered && params.alarme_enabled) {
-            // Modo Cíclico ON/OFF se for alarme de umidade (conforme PDF)
-            // Usando timer global do sistema ou um novo contador
-            // Simplificação: Pisca a cada segundo se habilitado
-            nextOutputs.q7_alarme = !outputs.q7_alarme; 
-        } else if (!alarmTriggered && !(!inputs.i3_energia)) {
-             // Se não há trigger e não é falta de energia, desliga
-             nextOutputs.q7_alarme = false;
+        const umidadeForaFaixa =
+            inputs.umidade_sensor < (params.sp_umid - params.hist_umid) ||
+            inputs.umidade_sensor > (params.sp_umid + params.hist_umid);
+
+        if (umidadeForaFaixa && !nextSimState.alarmReseted) {
+            nextSimState.alarmActive = true;
         }
 
-        // Reset manual de alarme
-        if (inputs.i2_reset) {
+        // Alarme cíclico ON/OFF após reset
+        if (nextSimState.alarmActive && nextSimState.alarmReseted && params.alarme_enabled) {
+            nextSimState.timerAlarme++;
+            const cycleAlarm = (params.time_alarme_on + params.time_alarme_off) * 60; // Converter para segundos
+            const posAlarm = nextSimState.timerAlarme % cycleAlarm;
+            nextOutputs.q7_alarme = (posAlarm < (params.time_alarme_on * 60));
+        } else if (nextSimState.alarmActive && !nextSimState.alarmReseted) {
+            nextOutputs.q7_alarme = true;
+        } else {
             nextOutputs.q7_alarme = false;
+            nextSimState.timerAlarme = 0;
         }
 
-        return { 
-            ...curr, 
-            outputs: nextOutputs, 
+        return {
+            ...curr,
+            outputs: nextOutputs,
             simState: nextSimState,
             inputs: nextInputs
         };
       });
-    }, 1000); 
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [state.isConnected, state.isManualMode, isDemoMode, state.macAddress]);

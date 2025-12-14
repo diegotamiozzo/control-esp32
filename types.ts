@@ -58,5 +58,13 @@ export interface AppState {
     sequenceStep: 'STOPPED' | 'STARTING_FAN' | 'STARTING_AUGER2' | 'OPENING_VALVE' | 'WAITING_OPEN' | 'RUNNING' | 'STOPPING';
     timerVibrador: number;
     timerRoscaSec: number;
+    timerAlarme: number;
+    alarmActive: boolean;
+    alarmReseted: boolean;
+    prevI2Reset: boolean;
+    chamaPilotoTimer: number;
+    chamaPilotoWaitTimer: number;
+    chamaPilotoActive: boolean;
+    tempInHysteresisTimer: number;
   }
 }

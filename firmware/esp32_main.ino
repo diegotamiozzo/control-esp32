@@ -209,6 +209,11 @@ void readInputs() {
     inputs.i6_temp_sensor = t;
     inputs.i7_umidade_sensor = h;
   }
+
+  // DEBUG: Imprimir estado das entradas para verificação
+  Serial.printf("INPUTS -> I1(Hab):%d | I3(Energia):%d | I4(Ab):%d | I5(Fech):%d | Temp:%.1f\n", 
+                inputs.i1_habilitacao, inputs.i3_energia, inputs.i4_fim_curso_aberta, 
+                inputs.i5_fim_curso_fechada, inputs.i6_temp_sensor);
 }
 
 void applyOutputs() {
@@ -233,6 +238,7 @@ void controlLogic() {
   }
   // Falha de Energia (I3) - Desliga tudo
   if (!inputs.i3_energia) {
+    Serial.println("BLOQUEIO: Falta de Energia detectada (I3 não está em GND). Saídas forçadas em OFF.");
     outputs.q1_rosca_principal = false;
     outputs.q2_rosca_secundaria = false;
     outputs.q3_vibrador = false;
@@ -284,6 +290,7 @@ void controlLogic() {
     }
 
   } else {
+    Serial.println("STATUS: Sistema Desabilitado (I1 não está em GND).");
     // Sistema desligado - parada em cascata
     outputs.q1_rosca_principal = false;
     outputs.q3_vibrador = false;
@@ -457,8 +464,8 @@ void setup() {
     Serial.println("Modo AP - ESP32_IOT_SETUP");
   });
   
-  // Define timeout de 3 minutos. Se não configurar, segue em modo offline.
-  wm.setConfigPortalTimeout(180);
+  // Define timeout reduzido para 30s para facilitar testes de bancada
+  wm.setConfigPortalTimeout(30);
 
   if (!wm.autoConnect("ESP32_IOT_SETUP", "senha123")) {
     Serial.println("Falha WiFi. Iniciando em modo OFFLINE.");

@@ -19,37 +19,37 @@ const char* mqtt_pass = "Corcel@73";
 
 // --- CERTIFICADO ROOT CA ---
 const char* root_ca = \
-"-----BEGIN CERTIFICATE-----\n" \
-"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\n" \
-"-----END CERTIFICATE-----\n";
+                      "-----BEGIN CERTIFICATE-----\n" \
+                      "MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw\n" \
+                      "TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh\n" \
+                      "cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4\n" \
+                      "WhcNMzUwNjA0MTEwNDM4WjBPMQswCQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJu\n" \
+                      "ZXQgU2VjdXJpdHkgUmVzZWFyY2ggR3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBY\n" \
+                      "MTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAK3oJHP0FDfzm54rVygc\n" \
+                      "h77ct984kIxuPOZXoHj3dcKi/vVqbvYATyjb3miGbESTtrFj/RQSa78f0uoxmyF+\n" \
+                      "0TM8ukj13Xnfs7j/EvEhmkvBioZxaUpmZmyPfjxwv60pIgbz5MDmgK7iS4+3mX6U\n" \
+                      "A5/TR5d8mUgjU+g4rk8Kb4Mu0UlXjIB0ttov0DiNewNwIRt18jA8+o+u3dpjq+sW\n" \
+                      "T8KOEUt+zwvo/7V3LvSye0rgTBIlDHCNAymg4VMk7BPZ7hm/ELNKjD+Jo2FR3qyH\n" \
+                      "B5T0Y3HsLuJvW5iB4YlcNHlsdu87kGJ55tukmi8mxdAQ4Q7e2RCOFvu396j3x+UC\n" \
+                      "B5iPNgiV5+I3lg02dZ77DnKxHZu8A/lJBdiB3QW0KtZB6awBdpUKD9jf1b0SHzUv\n" \
+                      "KBds0pjBqAlkd25HN7rOrFleaJ1/ctaJxQZBKT5ZPt0m9STJEadao0xAH0ahmbWn\n" \
+                      "OlFuhjuefXKnEgV4We0+UXgVCwOPjdAvBbI+e0ocS3MFEvzG6uBQE3xDk3SzynTn\n" \
+                      "jh8BCNAw1FtxNrQHusEwMFxIt4I7mKZ9YIqioymCzLq9gwQbooMDQaHWBfEbwrbw\n" \
+                      "qHyGO0aoSCqI3Haadr8faqU9GY/rOPNk3sgrDQoo//fb4hVC1CLQJ13hef4Y53CI\n" \
+                      "rU7m2Ys6xt0nUW7/vGT1M0NPAgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNV\n" \
+                      "HRMBAf8EBTADAQH/MB0GA1UdDgQWBBR5tFnme7bl5AFzgAiIyBpY9umbbjANBgkq\n" \
+                      "hkiG9w0BAQsFAAOCAgEAVR9YqbyyqFDQDLHYGmkgJykIrGF1XIpu+ILlaS/V9lZL\n" \
+                      "ubhzEFnTIZd+50xx+7LSYK05qAvqFyFWhfFQDlnrzuBZ6brJFe+GnY+EgPbk6ZGQ\n" \
+                      "3BebYhtF8GaV0nxvwuo77x/Py9auJ/GpsMiu/X1+mvoiBOv/2X/qkSsisRcOj/KK\n" \
+                      "NFtY2PwByVS5uCbMiogziUwthDyC3+6WVwW6LLv3xLfHTjuCvjHIInNzktHCgKQ5\n" \
+                      "ORAzI4JMPJ+GslWYHb4phowim57iaztXOoJwTdwJx4nLCgdNbOhdjsnvzqvHu7Ur\n" \
+                      "TkXWStAmzOVyyghqpZXjFaH3pO3JLF+l+/+sKAIuvtd7u+Nxe5AW0wdeRlN8NwdC\n" \
+                      "jNPElpzVmbUq4JUagEiuTDkHzsxHpFKVK7q4+63SM1N95R1NbdWhscdCb/ZAJzVc\n" \
+                      "oyi3B43njTOQ5yOf+1CceWxG1bQVs5ZufpsMljq4Ui0/1lvh+wjChP4kqKOJ2qxq\n" \
+                      "4RgqsahDYVvTH9w7jXbyLeiNdd8XM2w9U/t7y0Ff/9yi0GE44Za4rF2LN9d11TPA\n" \
+                      "mRGunUHBcnWEvgJBQl9nJEiU0Zsnvgc/ubhPgXRR4Xq37Z0j4r7g1SgEEzwxA57d\n" \
+                      "emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=\n" \
+                      "-----END CERTIFICATE-----\n";
 
 // =================================================================
 // DEFINIÇÕES DE HARDWARE
@@ -280,20 +280,20 @@ void runSystemLogic() {
       outputs.q7_alarme = false;
 
       if (inputs.i6_temp_sensor < sp_temp && inputs.i6_temp_sensor > (sp_temp - hist_temp)) {
-         if (now - timer_pilot_wait > (time_chama_wait * 60000)) {
-            if (now - timer_pilot_run < (time_chama_atv * 1000)) {
-               outputs.q4_ventoinha = true;
-            } else {
-               outputs.q4_ventoinha = false;
-               timer_pilot_run = now;
-            }
-         } else {
-           outputs.q4_ventoinha = false;
-         }
+        if (now - timer_pilot_wait > (time_chama_wait * 60000)) {
+          if (now - timer_pilot_run < (time_chama_atv * 1000)) {
+            outputs.q4_ventoinha = true;
+          } else {
+            outputs.q4_ventoinha = false;
+            timer_pilot_run = now;
+          }
+        } else {
+          outputs.q4_ventoinha = false;
+        }
       } else {
-         outputs.q4_ventoinha = false;
-         timer_pilot_wait = now;
-         timer_pilot_run = now;
+        outputs.q4_ventoinha = false;
+        timer_pilot_wait = now;
+        timer_pilot_run = now;
       }
 
       if (inputs.i1_habilitacao && inputs.i3_energia && inputs.i6_temp_sensor < (sp_temp - hist_temp)) {
@@ -426,11 +426,26 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   bool settings_changed = false;
 
-  if (doc.containsKey("sp_temp")) { sp_temp = doc["sp_temp"]; settings_changed = true; }
-  if (doc.containsKey("hist_temp")) { hist_temp = doc["hist_temp"]; settings_changed = true; }
-  if (doc.containsKey("sp_umid")) { sp_umid = doc["sp_umid"]; settings_changed = true; }
-  if (doc.containsKey("hist_umid")) { hist_umid = doc["hist_umid"]; settings_changed = true; }
-  if (doc.containsKey("temp_unit")) { temp_unit = doc["temp_unit"].as<String>()[0]; settings_changed = true; }
+  if (doc.containsKey("sp_temp")) {
+    sp_temp = doc["sp_temp"];
+    settings_changed = true;
+  }
+  if (doc.containsKey("hist_temp")) {
+    hist_temp = doc["hist_temp"];
+    settings_changed = true;
+  }
+  if (doc.containsKey("sp_umid")) {
+    sp_umid = doc["sp_umid"];
+    settings_changed = true;
+  }
+  if (doc.containsKey("hist_umid")) {
+    hist_umid = doc["hist_umid"];
+    settings_changed = true;
+  }
+  if (doc.containsKey("temp_unit")) {
+    temp_unit = doc["temp_unit"].as<String>()[0];
+    settings_changed = true;
+  }
 
   if (doc.containsKey("time_vibrador_on")) time_vibrador_on = doc["time_vibrador_on"];
   if (doc.containsKey("time_vibrador_off")) time_vibrador_off = doc["time_vibrador_off"];
@@ -459,14 +474,27 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void attemptMqttConnection() {
+  Serial.print("⏳ Tentando MQTT... ");
+  
+  // Tenta conectar
   if (client.connect(client_id, mqtt_user, mqtt_pass, topic_lwt, 1, true, "offline")) {
+    Serial.println("✅ CONECTADO!");
     client.publish(topic_lwt, "online", true);
     client.subscribe(topic_command);
-  }
+    Serial.print("Inscrito em: ");
+    Serial.println(topic_command);
+  } else {
+    Serial.print("❌ Falha. Estado = ");
+    Serial.print(client.state());
+    Serial.println(" (Tentando novamente em 5s)");
+    
+   }
 }
 
 void setup() {
   Serial.begin(115200);
+  delay(1000); // Espera estabilizar
+
   dht.begin();
   loadSettings();
 
@@ -486,9 +514,21 @@ void setup() {
 
   applyOutputs();
 
-  wm.setConfigPortalTimeout(180);
-  if (!wm.autoConnect("ESP32_INDUSTRIAL", "senha123")) ESP.restart();
 
+  wm.setConnectTimeout(20);
+  wm.setConfigPortalTimeout(180);
+
+  Serial.println("⏳ Tentando conectar ao WiFi...");
+  if (!wm.autoConnect("ESP32_INDUSTRIAL", "senha123")) {
+    Serial.println("❌ Falha no WiFi ou Timeout. Reiniciando...");
+    ESP.restart();
+  }
+
+  Serial.println("\n✓ WiFi conectado!");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+
+  // --- CONFIGURAÇÃO MQTT ---
   String mac = WiFi.macAddress();
   mac.replace(":", "");
   mac.toCharArray(client_id, 32);
@@ -496,7 +536,16 @@ void setup() {
   snprintf(topic_command, 64, "dispositivo/%s/comando", client_id);
   snprintf(topic_lwt, 64, "dispositivo/%s/conexao", client_id);
 
-  espClient.setCACert(root_ca);
+  // --- CORREÇÃO CRÍTICA AQUI ---
+
+  // 1. Aumenta o tamanho do pacote permitido (Seu JSON é grande!)
+  client.setBufferSize(2048);
+
+  // 2. Tenta conexão segura simplificada (Bypassa validação de certificado para teste)
+  // Se funcionar assim, o problema era o certificado CA. Se não, é senha ou firewall.
+  espClient.setInsecure();
+  // espClient.setCACert(root_ca); // Descomente e use este se quiser validação estrita depois
+
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 }

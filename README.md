@@ -33,11 +33,7 @@ Sistema completo de controle e monitoramento industrial para gerenciamento de pr
 ├── /components                     # Componentes reutilizáveis
 ├── /context                        # Context API (MachineContext)
 ├── /firmware                       # Código Arduino ESP32
-│   ├── esp32_main_state_machine.ino  # ⭐ Firmware RECOMENDADO (Máquina de Estados)
-│   ├── esp32_main.ino              # Firmware anterior (simples)
-│   └── esp32_main_CORRIGIDO.ino    # Versão intermediária
-├── FIRMWARE_GUIDE.md               # 📘 Guia completo do firmware
-├── SETUP_MQTT.md                   # Configuração MQTT
+│   ├── esp32-main.ino              # Firmware
 ├── netlify.toml                    # Deploy Netlify
 └── .env                            # Variáveis de ambiente
 ```
@@ -71,9 +67,9 @@ npm install
 Arquivo `.env` já configurado:
 
 ```env
-VITE_MQTT_BROKER=wss://72c037df4ced415995ef95169a5c7248.s1.eu.hivemq.cloud:8884/mqtt
-VITE_MQTT_USERNAME=esp32_cliente02
-VITE_MQTT_PASSWORD=Corcel@73
+VITE_MQTT_BROKER=
+VITE_MQTT_USERNAME=
+VITE_MQTT_PASSWORD=
 
 ```
 
@@ -256,7 +252,7 @@ O sistema implementa 8 estados principais:
 #define PIN_Q7_ALARME 5
 ```
 
-**⚠️ IMPORTANTE:** As entradas usam INPUT_PULLUP, então o acionamento é feito conectando o pino ao GND (lógica invertida).
+**IMPORTANTE:** As entradas usam INPUT_PULLUP, então o acionamento é feito conectando o pino ao GND (lógica invertida).
 
 ### Bibliotecas Necessárias
 
@@ -270,7 +266,7 @@ Instale via Arduino IDE (Library Manager):
 
 ### Upload do Código
 
-1. Abra `/firmware/esp32_main_state_machine.ino` no Arduino IDE
+1. Abra `/firmware\esp32-main.ino` no Arduino IDE
 2. Selecione a placa: **ESP32 Dev Module**
 3. Configure:
    - Upload Speed: 115200
@@ -278,8 +274,6 @@ Instale via Arduino IDE (Library Manager):
    - Partition Scheme: "Default 4MB with spiffs"
 4. Selecione a porta serial correta
 5. Clique em Upload (Ctrl+U)
-
-**📘 Para detalhes completos, consulte [FIRMWARE_GUIDE.md](FIRMWARE_GUIDE.md)**
 
 ### Primeira Configuração
 

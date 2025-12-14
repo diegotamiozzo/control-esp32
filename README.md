@@ -190,8 +190,8 @@ O sistema implementa 8 estados principais:
 
 **Controle de Umidade (Q6)**
 - Independente do ciclo principal
-- Umidade < SP - Histerese → Abre
-- Umidade > SP + Histerese → Fecha
+- Umidade > SP + Histerese → Abre (Exaustão)
+- Umidade < SP - Histerese → Fecha
 
 ### Sequência de Parada (Controlada)
 

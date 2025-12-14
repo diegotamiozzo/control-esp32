@@ -228,9 +228,9 @@ void applyOutputs() {
 void controlHumidity() {
   if (manual_mode || currentState == ST_ALARM_CRITICAL) return;
 
-  if (inputs.i7_umidade_sensor < (sp_umid - hist_umid)) {
+  if (inputs.i7_umidade_sensor > (sp_umid + hist_umid)) {
     outputs.q6_damper = true;
-  } else if (inputs.i7_umidade_sensor > (sp_umid + hist_umid)) {
+  } else if (inputs.i7_umidade_sensor < (sp_umid - hist_umid)) {
     outputs.q6_damper = false;
   }
 }

@@ -69,7 +69,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <footer className="bg-white border-t border-slate-200 py-4 mt-auto">
         <div className="container mx-auto px-4 text-center text-xs text-slate-400">
           <p className="text-xs text-center text-slate-600">
-            © {new Date().getFullYear()} METALGIUSTI EQUIPAMENTOS LTDA • SC-285, KM 1 – Linha Seminário, Turvo – SC • 88930-000
+            © {new Date().getFullYear()} METALGIUSTI EQUIPAMENTOS LTDA • SC-285, KM 1 - Linha Seminário, Turvo - SC • 88930-000
           </p>
           <p className="mt-1 text-xs text-center text-slate-600 flex items-center justify-center gap-1">
             <Phone size={14} />

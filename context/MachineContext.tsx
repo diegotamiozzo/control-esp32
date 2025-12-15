@@ -128,11 +128,8 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
     }
 
     console.log('=== INICIANDO CONEXÃO MQTT ===');
-    console.log('Broker:', MQTT_BROKER_URL);
     console.log('Usuário:', MQTT_USER);
     console.log('MAC Address:', state.macAddress);
-    console.log('Tópico telemetria:', `${TOPIC_PREFIX}/${state.macAddress}/telemetria`);
-    console.log('Tópico comando:', `${TOPIC_PREFIX}/${state.macAddress}/comando`);
 
     try {
         const client = mqtt.connect(MQTT_BROKER_URL, {
@@ -152,23 +149,18 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         
         client.on('connect', () => {
             console.log('✓ MQTT CONECTADO COM SUCESSO!');
-            console.log('✓ Inscrito em:', topicTelemetry);
             setState(s => ({ ...s, isConnected: true, mqttConnected: true }));
             client.subscribe(topicTelemetry, (err) => {
                 if (err) {
                     console.error('Erro ao inscrever no tópico:', err);
-                } else {
-                    console.log('✓ Inscrição confirmada');
                 }
             });
         });
 
         client.on('message', (topic, message) => {
-            console.log('📨 Mensagem recebida:', topic);
             if (topic === topicTelemetry) {
                 try {
                     const payload = JSON.parse(message.toString());
-                    console.log('📦 Payload:', payload);
                     setState(prev => {
                         const newInputs = { ...prev.inputs };
                         const newOutputs = { ...prev.outputs };
@@ -375,9 +367,9 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         // -------------------------------
         // 4. CONTROLE DE UMIDADE (Independente)
         // -------------------------------
-        if (inputs.umidade_sensor < (params.sp_umid - params.hist_umid)) {
+        if ((inputs.umidade_sensor + params.hist_umid) < params.sp_umid) {
             nextOutputs.q6_damper = true;
-        } else if (inputs.umidade_sensor > (params.sp_umid + params.hist_umid)) {
+        } else if (inputs.umidade_sensor > params.sp_umid) {
             nextOutputs.q6_damper = false;
         }
 
@@ -447,7 +439,6 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
 
             if (Object.keys(payload).length > 0) {
                 clientRef.current.publish(topicCmd, JSON.stringify(payload));
-                console.log('⚙️ Parâmetros enviados:', payload);
             }
         }
         return { ...s, params: updated };
@@ -476,7 +467,6 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
                 [key]: newOutputs[key]
             };
             clientRef.current.publish(topicCmd, JSON.stringify(payload));
-            console.log('🎛️ Comando manual enviado:', payload);
         }
 
         return { ...s, outputs: newOutputs };
@@ -490,7 +480,6 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
             const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
             const payload = { manual_mode: enabled };
             clientRef.current.publish(topicCmd, JSON.stringify(payload));
-            console.log('🎛️ Modo manual:', enabled ? 'ATIVADO' : 'DESATIVADO');
         }
 
         return { ...s, isManualMode: enabled };

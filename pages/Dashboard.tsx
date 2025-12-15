@@ -49,7 +49,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-6 md:space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-slate-800">Monitoramento DHT11</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-slate-800">Monitoramento</h2>
           <p className="text-sm text-slate-500">Temperatura e umidade em tempo real</p>
         </div>
         <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm font-medium ${
@@ -74,7 +74,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base md:text-lg font-bold text-slate-800">Temperatura</h3>
-                <p className="text-xs md:text-sm text-slate-500">DHT11 Sensor</p>
+                <p className="text-xs md:text-sm text-slate-500">Sensor interno</p>
               </div>
             </div>
             <div className="text-right">
@@ -119,7 +119,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base md:text-lg font-bold text-slate-800">Umidade</h3>
-                <p className="text-xs md:text-sm text-slate-500">DHT11 Sensor</p>
+                <p className="text-xs md:text-sm text-slate-500">Sensor interno</p>
               </div>
             </div>
             <div className="text-right">

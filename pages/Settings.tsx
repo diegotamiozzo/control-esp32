@@ -69,7 +69,7 @@ const Settings: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-800">Configurações</h2>
-                <p className="text-sm text-slate-500">Ajuste os setpoints de temperatura e umidade</p>
+                <p className="text-sm text-slate-500">Ajuste os Setpoints de Temperatura e Umidade</p>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -94,7 +94,7 @@ const Settings: React.FC = () => {
         <section className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
             <h3 className="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center">
                 <RefreshCw size={18} className="mr-2 text-orange-500" />
-                Setpoints do Sensor DHT11
+                Setpoints dos Sensores
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
@@ -138,7 +138,7 @@ const Settings: React.FC = () => {
                                 onChange={handleChange}
                                 min="1"
                                 max="10"
-                                step="0.5"
+                                step="1"
                                 className="w-full px-3 py-2.5 border rounded-lg border-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-base"
                             />
                             <span className="absolute right-3 top-2.5 text-slate-400">°{formData.temp_unit}</span>
@@ -316,7 +316,7 @@ const Settings: React.FC = () => {
             </div>
         </section>
 
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-center pt-4">
             <button
                 type="submit"
                 className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-8 rounded-xl shadow-lg shadow-orange-200 flex items-center justify-center space-x-2 transition-all duration-200 active:scale-95"

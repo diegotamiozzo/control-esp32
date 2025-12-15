@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <div className="bg-indigo-600 p-1.5 rounded-lg">
                 <Activity className="text-white" size={20} />
             </div>
-            <span className="font-bold text-lg tracking-wide text-slate-100">SYS CONTROL</span>
+            <span className="font-bold text-lg tracking-wide text-slate-100">Controle</span>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-full md:hidden text-slate-400 hover:text-white">
             <X size={24} />
@@ -83,7 +83,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <LogOut size={18} />
             <span>Desconectar</span>
           </button>
-          <p className="mt-4 text-xs text-center text-slate-600">v1.0.0 Control Panel</p>
+          <p className="mt-4 text-xs text-center text-slate-600">
+              <a
+                href="https://optimize.dev.br/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-slate-800 transition-colors"
+              >
+                www.optimize.dev.br
+              </a>
+          </p>
         </div>
       </div>
     </>

@@ -341,27 +341,25 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         // -------------------------------
         if (tempInHysteresis) {
             nextSimState.tempInHysteresisTimer++;
-            const waitMinutes = params.time_chama_wait * 60; // Converter minutos para segundos
+            const waitSeconds = params.time_chama_wait * 60;
+            const activeSeconds = params.time_chama_atv;
+            const totalCycle = waitSeconds + activeSeconds;
 
-            if (nextSimState.tempInHysteresisTimer >= waitMinutes && !nextSimState.chamaPilotoActive) {
+            // Reinicia o ciclo se ultrapassar o tempo total (Espera + Ativação)
+            if (nextSimState.tempInHysteresisTimer >= totalCycle) {
+                nextSimState.tempInHysteresisTimer = 0;
+            }
+
+            // Se passou do tempo de espera, ativa a saída
+            if (nextSimState.tempInHysteresisTimer >= waitSeconds) {
+                nextOutputs.q4_ventoinha = true;
                 nextSimState.chamaPilotoActive = true;
-                nextSimState.chamaPilotoTimer = 0;
+            } else {
+                nextSimState.chamaPilotoActive = false;
             }
         } else {
             nextSimState.tempInHysteresisTimer = 0;
             nextSimState.chamaPilotoActive = false;
-            nextSimState.chamaPilotoTimer = 0;
-        }
-
-        // Executar Chama Piloto se ativo
-        if (nextSimState.chamaPilotoActive) {
-            nextSimState.chamaPilotoTimer++;
-            if (nextSimState.chamaPilotoTimer <= params.time_chama_atv) {
-                // Lógica da chama piloto aqui
-                // Por exemplo, manter ventoinha ligada mesmo sem outras condições
-            } else {
-                nextSimState.chamaPilotoActive = false;
-            }
         }
 
         // -------------------------------
@@ -462,9 +460,21 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         // Se não for demo e estiver conectado ao MQTT, enviar comando
         if (!isDemoMode && clientRef.current?.connected) {
             const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
+            
+            // Mapeamento de chaves longas para curtas (firmware)
+            const keyMap: Record<string, string> = {
+                q1_rosca_principal: 'q1',
+                q2_rosca_secundaria: 'q2',
+                q3_vibrador: 'q3',
+                q4_ventoinha: 'q4',
+                q5_corta_fogo: 'q5',
+                q6_damper: 'q6',
+                q7_alarme: 'q7'
+            };
+
             const payload = {
                 manual_mode: true,
-                [key]: newOutputs[key]
+                [keyMap[key] || key]: newOutputs[key]
             };
             clientRef.current.publish(topicCmd, JSON.stringify(payload));
         }

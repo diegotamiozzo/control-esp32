@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, ArrowRight, Trash2, Clock } from 'lucide-react';
+import { Cpu, ArrowRight, Trash2, Clock, Loader2 } from 'lucide-react';
 import { useMachine } from '../context/MachineContext';
 import { Phone } from 'lucide-react';
+import mqtt from 'mqtt';
+
+const getEnv = (key: string) => {
+  try {
+    // @ts-ignore
+    return import.meta.env ? import.meta.env[key] : undefined;
+  } catch (e) {
+    return undefined;
+  }
+};
 
 const Login: React.FC = () => {
   const { setMacAddress } = useMachine();
   const [inputMac, setInputMac] = useState('');
   const [error, setError] = useState('');
   const [savedMacs, setSavedMacs] = useState<string[]>([]);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('savedMacList');
@@ -34,23 +45,80 @@ const Login: React.FC = () => {
     localStorage.setItem('savedMacList', JSON.stringify(newList));
   };
 
+  const verifyAndConnect = (mac: string) => {
+    if (mac.toLowerCase() === 'demo') {
+      setMacAddress('demo');
+      return;
+    }
+
+    setIsChecking(true);
+    setError('');
+
+    const broker = getEnv('VITE_MQTT_BROKER');
+    const user = getEnv('VITE_MQTT_USERNAME');
+    const pass = getEnv('VITE_MQTT_PASSWORD');
+
+    if (!broker || !user || !pass) {
+      setError('Erro de configuração: Credenciais MQTT não encontradas.');
+      setIsChecking(false);
+      return;
+    }
+
+    const client = mqtt.connect(broker, {
+      username: user,
+      password: pass,
+      connectTimeout: 5000,
+      clientId: `check_${Math.random().toString(16).substring(2, 10)}`
+    });
+
+    const topic = `dispositivo/${mac}/telemetria`;
+    let received = false;
+
+    client.on('connect', () => {
+      client.subscribe(topic);
+    });
+
+    client.on('message', (t) => {
+      if (t === topic) {
+        received = true;
+        client.end();
+        saveMacToList(mac);
+        setMacAddress(mac);
+      }
+    });
+
+    client.on('error', () => {
+      if (!received) {
+        client.end();
+        setError('Erro ao conectar ao servidor MQTT.');
+        setIsChecking(false);
+      }
+    });
+
+    setTimeout(() => {
+      if (!received) {
+        client.end();
+        setError('Dispositivo não encontrado ou offline. Verifique se o controlador está ligado.');
+        setIsChecking(false);
+      }
+    }, 4000);
+  };
+
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
 
     const cleanMac = inputMac.trim().toUpperCase().replace(/[:-]/g, '');
 
-    if (inputMac.toLowerCase() === 'demo') {
-      setMacAddress('demo');
-    } else if (/^[0-9A-F]{12}$/.test(cleanMac)) {
-      saveMacToList(cleanMac);
-      setMacAddress(cleanMac);
-    } else {
+    if (inputMac.toLowerCase() !== 'demo' && !/^[0-9A-F]{12}$/.test(cleanMac)) {
       setError('Formato inválido. Use 12 caracteres hexadecimais (ex: 48E72999971C ou 48:E7:29:99:97:1C)');
+      return;
     }
+    
+    verifyAndConnect(cleanMac);
   };
 
   const connectToSavedMac = (mac: string) => {
-    setMacAddress(mac);
+    verifyAndConnect(mac);
   };
 
   return (
@@ -64,7 +132,7 @@ const Login: React.FC = () => {
               <img 
                 src="/images/company-logo.png" 
                 alt="Logo da Empresa" 
-                className="h-24 w-auto object-contain"
+                className="h-36 w-auto object-contain"
               />
             </div>
 
@@ -98,10 +166,20 @@ const Login: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center space-x-2 group shadow-lg shadow-indigo-200 active:scale-95"
+              disabled={isChecking}
+              className={`w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold hover:bg-indigo-700 transition-all duration-300 flex items-center justify-center space-x-2 group shadow-lg shadow-indigo-200 active:scale-95 ${isChecking ? 'opacity-75 cursor-wait' : ''}`}
             >
-              <span>Conectar</span>
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              {isChecking ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>Verificando...</span>
+                </>
+              ) : (
+                <>
+                  <span>Conectar</span>
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </form>
 
@@ -124,6 +202,7 @@ const Login: React.FC = () => {
                     className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
                   >
                     <button
+                      disabled={isChecking}
                       onClick={() => connectToSavedMac(mac)}
                       className="flex-1 text-left font-mono text-sm text-slate-700 group-hover:text-indigo-700 font-medium"
                     >

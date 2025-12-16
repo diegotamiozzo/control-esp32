@@ -279,20 +279,24 @@ void runSystemLogic() {
       outputs.q7_alarme = false;
 
       if (inputs.i6_temp_sensor < sp_temp && inputs.i6_temp_sensor > (sp_temp - hist_temp)) {
-        if (now - timer_pilot_wait > (time_chama_wait * 60000)) {
-          if (now - timer_pilot_run < (time_chama_atv * 1000)) {
-            outputs.q4_ventoinha = true;
-          } else {
-            outputs.q4_ventoinha = false;
-            timer_pilot_run = now;
-          }
+        unsigned long wait_ms = time_chama_wait * 60000;
+        unsigned long run_ms = time_chama_atv * 1000;
+        unsigned long cycle_pos = now - timer_pilot_wait;
+
+        if (cycle_pos >= (wait_ms + run_ms)) {
+          // Fim do ciclo (Espera + Ativação), reinicia contagem
+          timer_pilot_wait = now;
+          outputs.q4_ventoinha = false;
+        } else if (cycle_pos >= wait_ms) {
+          // Passou o tempo de espera, ativa a ventoinha
+          outputs.q4_ventoinha = true;
         } else {
+          // Ainda no tempo de espera
           outputs.q4_ventoinha = false;
         }
       } else {
         outputs.q4_ventoinha = false;
         timer_pilot_wait = now;
-        timer_pilot_run = now;
       }
 
       if (inputs.i1_habilitacao && inputs.i3_energia && inputs.i6_temp_sensor < (sp_temp - hist_temp)) {

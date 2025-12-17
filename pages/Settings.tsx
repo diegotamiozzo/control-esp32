@@ -24,14 +24,11 @@ const Settings: React.FC = () => {
     const { name, value, type } = e.target;
     let newValue: any = value;
 
-    if (type === 'number') {
-      newValue = parseFloat(value);
-      if (isNaN(newValue)) newValue = 0; // Prevent NaN
-    } else if (type === 'checkbox') {
+    if (type === 'checkbox') {
       newValue = (e.target as HTMLInputElement).checked;
     }
 
-    setFormData(prev => ({ ...prev, [name]: newValue }));
+    setFormData(prev => ({ ...prev, [name]: newValue } as Parameters));
     setIsSaved(false);
     setIsModified(true);
   };
@@ -46,18 +43,37 @@ const Settings: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Função auxiliar para converter string em número de forma segura
+    const getNumericValue = (val: any, defaultVal: number) => {
+      const num = parseFloat(String(val));
+      return isNaN(num) ? defaultVal : num;
+    };
+
+    // Converte todos os campos numéricos antes de validar
+    const numericData = {
+      sp_temp: getNumericValue(formData.sp_temp, 0),
+      hist_temp: getNumericValue(formData.hist_temp, 1),
+      sp_umid: getNumericValue(formData.sp_umid, 20),
+      hist_umid: getNumericValue(formData.hist_umid, 1),
+      time_vibrador_on: getNumericValue(formData.time_vibrador_on, 0),
+      time_vibrador_off: getNumericValue(formData.time_vibrador_off, 0),
+      time_rosca_sec_on: getNumericValue(formData.time_rosca_sec_on, 0),
+      time_rosca_sec_off: getNumericValue(formData.time_rosca_sec_off, 0),
+      time_alarme_on: getNumericValue(formData.time_alarme_on, 0),
+      time_alarme_off: getNumericValue(formData.time_alarme_off, 0),
+      time_chama_atv: getNumericValue(formData.time_chama_atv, 0),
+      time_chama_wait: getNumericValue(formData.time_chama_wait, 0),
+    };
+
     const maxTemp = formData.temp_unit === 'C' ? 165 : 329;
-    const sanitizedTemp = Math.min(Math.max(0, formData.sp_temp), maxTemp);
-    const sanitizedHistTemp = Math.max(1, formData.hist_temp);
-    const sanitizedHistUmid = Math.max(1, formData.hist_umid);
-    const sanitizedUmid = Math.min(Math.max(20, formData.sp_umid), 100);
 
     const sanitizedData: Parameters = {
       ...formData,
-      sp_temp: sanitizedTemp,
-      hist_temp: sanitizedHistTemp,
-      sp_umid: sanitizedUmid,
-      hist_umid: sanitizedHistUmid,
+      ...numericData,
+      sp_temp: Math.min(Math.max(0, numericData.sp_temp), maxTemp),
+      hist_temp: Math.max(1, numericData.hist_temp),
+      sp_umid: Math.min(Math.max(20, numericData.sp_umid), 100),
+      hist_umid: Math.max(1, numericData.hist_umid),
     };
 
     updateParams(sanitizedData);

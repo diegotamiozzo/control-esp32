@@ -124,7 +124,7 @@ const Login: React.FC = () => {
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
               <img 
-                src="/public/images/company-logo.png" 
+                src="/images/company-logo.png" 
                 alt="Logo da Empresa" 
                 className="h-36 w-auto object-contain"
               />

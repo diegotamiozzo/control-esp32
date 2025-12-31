@@ -226,7 +226,7 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
          setTimeout(() => setState(s => ({ ...s, isConnected: true })), 500);
     }
 
-    if (!isDemoMode || !state.isConnected || state.isManualMode) return;
+if (!isDemoMode || !state.isConnected) return;
 
     const interval = setInterval(() => {
       setState(curr => {
@@ -238,10 +238,14 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
         // -------------------------------
         // DETECTAR PULSO DE RESET (I2)
         // -------------------------------
-        const resetPulse = inputs.i2_reset && !simState.prevI2Reset;
+      const resetPulse =
+        inputs.i2_reset &&
+        !simState.prevI2Reset &&
+        inputs.i3_energia;
+
         nextSimState.prevI2Reset = inputs.i2_reset;
 
-        if (resetPulse) {
+       if (resetPulse && !curr.isManualMode) {
             nextSimState.alarmActive = false;
             nextSimState.alarmReseted = true;
             nextSimState.timerAlarme = 0;
@@ -443,58 +447,107 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
     });
   }, [isDemoMode]);
 
-  const toggleInput = useCallback((key: keyof SystemInputs) => {
-    if (!isDemoMode) return; 
-    setState(s => ({ ...s, inputs: { ...s.inputs, [key]: !s.inputs[key] } }));
-  }, [isDemoMode]);
+    const toggleInput = useCallback(
+      (key: keyof SystemInputs) => {
+        if (!state.isManualMode) return;
+
+        setState(s => ({
+          ...s,
+          inputs: {
+            ...s.inputs,
+              [key]: !s.inputs[key],
+          },
+        }));
+      },
+      [isDemoMode]
+    );
+
+
 
   const updateSensor = useCallback((key: 'i6_temp_sensor' | 'umidade_sensor', value: number) => {
     if (!isDemoMode) return;
     setState(s => ({ ...s, inputs: { ...s.inputs, [key]: value } }));
   }, [isDemoMode]);
 
-  const toggleOutputManual = useCallback((key: keyof SystemOutputs) => {
-    setState(s => {
+    const toggleOutputManual = useCallback((key: keyof SystemOutputs) => {
+      setState(s => {
+        if (!s.isManualMode) return s; // 🔒 trava fora do teste
+
         const newOutputs = { ...s.outputs, [key]: !s.outputs[key] };
 
-        // Se não for demo e estiver conectado ao MQTT, enviar comando
         if (!isDemoMode && clientRef.current?.connected) {
-            const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
-            
-            // Mapeamento de chaves longas para curtas (firmware)
-            const keyMap: Record<string, string> = {
-                q1_rosca_principal: 'q1',
-                q2_rosca_secundaria: 'q2',
-                q3_vibrador: 'q3',
-                q4_ventoinha: 'q4',
-                q5_corta_fogo: 'q5',
-                q6_damper: 'q6',
-                q7_alarme: 'q7'
-            };
+          const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
+          const keyMap: Record<string, string> = {
+            q1_rosca_principal: 'q1',
+            q2_rosca_secundaria: 'q2',
+            q3_vibrador: 'q3',
+            q4_ventoinha: 'q4',
+            q5_corta_fogo: 'q5',
+            q6_damper: 'q6',
+            q7_alarme: 'q7'
+          };
 
-            const payload = {
-                manual_mode: true,
-                [keyMap[key] || key]: newOutputs[key]
-            };
-            clientRef.current.publish(topicCmd, JSON.stringify(payload));
+          clientRef.current.publish(
+            topicCmd,
+            JSON.stringify({
+              manual_mode: true,
+              [keyMap[key]]: newOutputs[key]
+            })
+          );
         }
 
         return { ...s, outputs: newOutputs };
+      });
+    }, [isDemoMode]);
+
+
+    const shutdownAllOutputs = useCallback(() => {
+    setState(s => {
+      const allOff: SystemOutputs = {
+        q1_rosca_principal: false,
+        q2_rosca_secundaria: false,
+        q3_vibrador: false,
+        q4_ventoinha: false,
+        q5_corta_fogo: false,
+        q6_damper: false,
+        q7_alarme: false,
+      };
+
+      // Envia para o ESP32
+      if (!isDemoMode && clientRef.current?.connected) {
+        const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
+        const payload = {
+          manual_mode: true,
+          q1: false,
+          q2: false,
+          q3: false,
+          q4: false,
+          q5: false,
+          q6: false,
+          q7: false,
+        };
+        clientRef.current.publish(topicCmd, JSON.stringify(payload));
+      }
+
+      return { ...s, outputs: allOff };
     });
   }, [isDemoMode]);
 
-  const setManualMode = useCallback((enabled: boolean) => {
-    setState(s => {
-        // Se não for demo e estiver conectado ao MQTT, enviar comando
-        if (!isDemoMode && clientRef.current?.connected) {
+
+      const setManualMode = useCallback((enabled: boolean) => {
+        shutdownAllOutputs();
+
+        setState(s => {
+          if (!isDemoMode && clientRef.current?.connected) {
             const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
             const payload = { manual_mode: enabled };
             clientRef.current.publish(topicCmd, JSON.stringify(payload));
-        }
+          }
 
-        return { ...s, isManualMode: enabled };
-    });
-  }, [isDemoMode]);
+          return { ...s, isManualMode: enabled };
+        });
+      }, [isDemoMode, shutdownAllOutputs]);
+
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {

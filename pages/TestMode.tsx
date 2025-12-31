@@ -5,10 +5,11 @@ import { TriangleAlert, ToggleLeft, ToggleRight, Eye, ArrowLeft, Power, CircleX 
 import { SystemInputs, SystemOutputs } from '../types';
 
 const TestMode: React.FC = () => {
-  const { state, toggleOutputManual, setManualMode } = useMachine();
+  const { state, toggleOutputManual, setManualMode, toggleInput } = useMachine();
   const [isTestModeEnabled, setIsTestModeEnabled] = useState(false);
   const navigate = useNavigate();
 
+  const isDemoMode = state.macAddress === 'demo';
   // Effect to handle Simulation Logic Pause
   useEffect(() => {
     if (isTestModeEnabled && !state.isManualMode) {
@@ -111,7 +112,7 @@ const TestMode: React.FC = () => {
                         Entradas (Inputs)
                     </h3>
                     <div className="flex items-center text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100">
-                         <Eye size={10} className="mr-1" /> Leitura
+                         <Power size={10} className="mr-1" /> Simulação
                     </div>
                 </div>
 
@@ -120,15 +121,18 @@ const TestMode: React.FC = () => {
                         .filter(k => !k.includes('sensor'))
                         .map((key) => {
                             const inputKey = key as keyof SystemInputs;
-                            const isActive = state.inputs[inputKey] as boolean;
+                            const isActive = state.inputs[inputKey];
                             
                             return (
-                            <div
+                            <button
                                 key={key}
-                                className={`relative flex items-center p-3 rounded-lg border transition-all ${
+                                type="button"
+                                onClick={() => isDemoMode && toggleInput(inputKey)}
+                                disabled={!isDemoMode}
+                                className={`relative group flex items-center p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/30 ${
                                     isActive 
                                     ? 'bg-indigo-50 border-indigo-200' 
-                                    : 'bg-white border-slate-100 opacity-60'
+                                    : 'bg-white border-slate-100'
                                 }`}
                             >
                                 <div className={`w-2 h-2 rounded-full mr-3 ${isActive ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300'}`} />
@@ -140,7 +144,7 @@ const TestMode: React.FC = () => {
                                         {key.split('_').slice(1).join(' ')}
                                     </span>
                                 </div>
-                            </div>
+                            </button>
                             );
                     })}
                 </div>

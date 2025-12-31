@@ -521,9 +521,9 @@ void setup() {
   wm.setConnectTimeout(20);
   wm.setConfigPortalTimeout(180);
 
-  Serial.println("⏳ Tentando conectar ao WiFi...");
+  Serial.println("Tentando conectar ao WiFi...");
   if (!wm.autoConnect("ESP32_INDUSTRIAL", "senha123")) {
-    Serial.println("❌ Falha no WiFi ou Timeout. Reiniciando...");
+    Serial.println("Falha no WiFi ou Timeout. Reiniciando...");
     ESP.restart();
   }
 

@@ -46,11 +46,6 @@ const Login: React.FC = () => {
   };
 
   const verifyAndConnect = (mac: string) => {
-    if (mac.toLowerCase() === 'demo') {
-      setMacAddress('demo');
-      return;
-    }
-
     setIsChecking(true);
     setError('');
 
@@ -109,7 +104,7 @@ const Login: React.FC = () => {
 
     const cleanMac = inputMac.trim().toUpperCase().replace(/[:-]/g, '');
 
-    if (inputMac.toLowerCase() !== 'demo' && !/^[0-9A-F]{12}$/.test(cleanMac)) {
+    if (!/^[0-9A-F]{12}$/.test(cleanMac)) {
       setError('Formato inválido. Use 12 caracteres hexadecimais (ex: 48E72999971C ou 48:E7:29:99:97:1C)');
       return;
     }
@@ -123,14 +118,13 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col px-4 py-8 sm:px-6 lg:px-8">
-      {/* Content Container - Grows to push footer down */}
       <div className="flex-grow flex flex-col items-center justify-center w-full">
         
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden p-6 sm:p-8 border border-slate-100 animate-fade-in-down">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
               <img 
-                src="/images/company-logo.png" 
+                src="/public/images/company-logo.png" 
                 alt="Logo da Empresa" 
                 className="h-36 w-auto object-contain"
               />
@@ -154,7 +148,7 @@ const Login: React.FC = () => {
                         setInputMac(e.target.value);
                         setError('');
                     }}
-                    placeholder="48F7299C27B8 "
+                    placeholder="48F7299C27B8"
                     className="w-full px-4 py-3.5 pl-11 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-mono uppercase text-slate-800 bg-slate-50 text-base"
                 />
                 <div className="absolute left-3 top-3.5 text-slate-400">
@@ -185,7 +179,7 @@ const Login: React.FC = () => {
 
           <div className="mt-6 text-center">
               <p className="text-xs text-slate-400">
-                  Insira o endereço MAC do controlador.
+                  Insira o endereço MAC do controlador ESP32.
               </p>
           </div>
 

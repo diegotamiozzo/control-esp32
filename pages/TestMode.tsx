@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMachine } from '../context/MachineContext';
-import { TriangleAlert, ToggleLeft, ToggleRight, Eye, ArrowLeft, Power, CircleX } from 'lucide-react';
+import { TriangleAlert, ToggleLeft, ToggleRight, ArrowLeft, Power, CircleX } from 'lucide-react';
 import { SystemInputs, SystemOutputs } from '../types';
 
 const TestMode: React.FC = () => {
-  const { state, toggleOutputManual, setManualMode, toggleInput } = useMachine();
+  const { state, toggleOutputManual, setManualMode } = useMachine();
   const [isTestModeEnabled, setIsTestModeEnabled] = useState(false);
   const navigate = useNavigate();
 
-  const isDemoMode = state.macAddress === 'demo';
-  // Effect to handle Simulation Logic Pause
+  // Effect to handle Manual Mode
   useEffect(() => {
     if (isTestModeEnabled && !state.isManualMode) {
         setManualMode(true);
@@ -29,6 +28,30 @@ const TestMode: React.FC = () => {
   const handleExitToDashboard = () => {
       setManualMode(false);
       navigate('/');
+  };
+
+  const getInputLabel = (key: string): { main: string; sub: string } => {
+    const labels: Record<string, { main: string; sub: string }> = {
+      'i1_habilitacao': { main: 'I1', sub: 'Habilitação' },
+      'i2_reset': { main: 'I2', sub: 'Reset' },
+      'i3_energia': { main: 'I3', sub: 'Energia' },
+      'i4_fim_curso_aberta': { main: 'I4', sub: 'FC Aberta' },
+      'i5_fim_curso_fechada': { main: 'I5', sub: 'FC Fechada' }
+    };
+    return labels[key] || { main: key.split('_')[0], sub: key.split('_').slice(1).join(' ') };
+  };
+
+  const getOutputLabel = (key: string): { main: string; sub: string } => {
+    const labels: Record<string, { main: string; sub: string }> = {
+      'q1_rosca_principal': { main: 'Q1', sub: 'Rosca Principal' },
+      'q2_rosca_secundaria': { main: 'Q2', sub: 'Rosca Secundária' },
+      'q3_vibrador': { main: 'Q3', sub: 'Vibrador' },
+      'q4_ventoinha': { main: 'Q4', sub: 'Ventoinha' },
+      'q5_corta_fogo': { main: 'Q5', sub: 'Corta-Fogo' },
+      'q6_damper': { main: 'Q6', sub: 'Damper' },
+      'q7_alarme': { main: 'Q7', sub: 'Alarme' }
+    };
+    return labels[key] || { main: key.split('_')[0], sub: key.split('_').slice(1).join(' ') };
   };
 
   // Warning Overlay
@@ -112,7 +135,7 @@ const TestMode: React.FC = () => {
                         Entradas (Inputs)
                     </h3>
                     <div className="flex items-center text-[10px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100">
-                         <Power size={10} className="mr-1" /> Simulação
+                         <Power size={10} className="mr-1" /> Monitoramento
                     </div>
                 </div>
 
@@ -122,14 +145,12 @@ const TestMode: React.FC = () => {
                         .map((key) => {
                             const inputKey = key as keyof SystemInputs;
                             const isActive = state.inputs[inputKey];
+                            const labels = getInputLabel(key);
                             
                             return (
-                            <button
+                            <div
                                 key={key}
-                                type="button"
-                                onClick={() => isDemoMode && toggleInput(inputKey)}
-                                disabled={!isDemoMode}
-                                className={`relative group flex items-center p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/30 ${
+                                className={`relative group flex items-center p-3 rounded-lg border text-left transition-all ${
                                     isActive 
                                     ? 'bg-indigo-50 border-indigo-200' 
                                     : 'bg-white border-slate-100'
@@ -138,15 +159,33 @@ const TestMode: React.FC = () => {
                                 <div className={`w-2 h-2 rounded-full mr-3 ${isActive ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-slate-300'}`} />
                                 <div className="flex-1 min-w-0">
                                     <span className={`block text-xs font-bold uppercase truncate ${isActive ? 'text-indigo-900' : 'text-slate-500'}`}>
-                                        {key.split('_')[0]}
+                                        {labels.main}
                                     </span>
                                     <span className="text-[10px] text-slate-500 truncate block">
-                                        {key.split('_').slice(1).join(' ')}
+                                        {labels.sub}
                                     </span>
                                 </div>
-                            </button>
+                                <div className={`ml-2 text-[10px] font-bold ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
+                                    {isActive ? 'ON' : 'OFF'}
+                                </div>
+                            </div>
                             );
                     })}
+                </div>
+
+                {/* Sensor Values */}
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Valores dos Sensores</h4>
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                            <span className="text-xs font-medium text-slate-600">Temperatura (I6)</span>
+                            <span className="text-sm font-bold text-orange-600">{state.inputs.i6_temp_sensor.toFixed(1)}°C</span>
+                        </div>
+                        <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                            <span className="text-xs font-medium text-slate-600">Umidade (I7)</span>
+                            <span className="text-sm font-bold text-blue-600">{state.inputs.umidade_sensor.toFixed(1)}%</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -166,6 +205,7 @@ const TestMode: React.FC = () => {
                     {Object.keys(state.outputs).map((key) => {
                             const outputKey = key as keyof SystemOutputs;
                             const isActive = state.outputs[outputKey];
+                            const labels = getOutputLabel(key);
                             
                             return (
                             <button
@@ -186,10 +226,10 @@ const TestMode: React.FC = () => {
                                 
                                 <div className="flex-1 min-w-0">
                                     <span className={`block text-xs font-bold uppercase truncate ${isActive ? 'text-emerald-900' : 'text-slate-700'}`}>
-                                        {key.split('_')[0]}
+                                        {labels.main}
                                     </span>
                                     <span className={`text-[10px] truncate block ${isActive ? 'text-emerald-700' : 'text-slate-500'}`}>
-                                        {key.split('_').slice(1).join(' ')}
+                                        {labels.sub}
                                     </span>
                                 </div>
                             </button>

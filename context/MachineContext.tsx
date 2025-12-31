@@ -36,11 +36,11 @@ const DEFAULT_PARAMS: Parameters = {
 };
 
 const DEFAULT_INPUTS: SystemInputs = {
-  i1_habilitacao: false,  // INPUT_PULLUP: false = sem GND (inativo)
-  i2_reset: false,        // INPUT_PULLUP: false = sem GND (inativo)
-  i3_energia: false,      // INPUT_PULLUP: false = sem GND (sem energia)
-  i4_fim_curso_aberta: false,   // INPUT_PULLUP: false = sem GND (não atingiu fim de curso)
-  i5_fim_curso_fechada: false,  // INPUT_PULLUP: false = sem GND (não atingiu fim de curso)
+  i1_habilitacao: false,
+  i2_reset: false,
+  i3_energia: false,
+  i4_fim_curso_aberta: false,
+  i5_fim_curso_fechada: false,
   i6_temp_sensor: 25,
   umidade_sensor: 50
 };
@@ -59,8 +59,6 @@ interface MachineContextType {
   state: AppState;
   setMacAddress: (mac: string) => void;
   updateParams: (newParams: Partial<Parameters>) => void;
-  toggleInput: (key: keyof SystemInputs) => void;
-  updateSensor: (key: 'i6_temp_sensor' | 'umidade_sensor', value: number) => void;
   toggleOutputManual: (key: keyof SystemOutputs) => void; 
   setManualMode: (enabled: boolean) => void;
   disconnect: () => void;
@@ -110,20 +108,15 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
     };
   });
 
-  const isDemoMode = state.macAddress?.toLowerCase() === 'demo';
-
   useEffect(() => { localStorage.setItem('machineParams', JSON.stringify(state.params)); }, [state.params]);
   useEffect(() => { if (state.macAddress) localStorage.setItem('esp32Mac', state.macAddress); }, [state.macAddress]);
 
   // --- MQTT LOGIC ---
   useEffect(() => {
-    if (!state.macAddress || isDemoMode) return;
+    if (!state.macAddress) return;
 
     if (!MQTT_BROKER_URL || !MQTT_USER || !MQTT_PASS) {
       console.error('❌ MQTT não configurado! Verifique o arquivo .env');
-      console.error('VITE_MQTT_BROKER:', MQTT_BROKER_URL);
-      console.error('VITE_MQTT_USERNAME:', MQTT_USER ? '***' : 'vazio');
-      console.error('VITE_MQTT_PASSWORD:', MQTT_PASS ? '***' : 'vazio');
       return;
     }
 
@@ -218,198 +211,7 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
              clientRef.current = null;
         }
     };
-  }, [state.macAddress, isDemoMode]);
-
-  // --- LÓGICA DE SIMULAÇÃO (MODO DEMO) ---
-  useEffect(() => {
-    if (state.macAddress && isDemoMode && !state.isConnected) {
-         setTimeout(() => setState(s => ({ ...s, isConnected: true })), 500);
-    }
-
-if (!isDemoMode || !state.isConnected) return;
-
-    const interval = setInterval(() => {
-      setState(curr => {
-        const { inputs, params, outputs, simState } = curr;
-        let nextOutputs = { ...outputs };
-        let nextSimState = { ...simState };
-        let nextInputs = { ...inputs };
-
-        // -------------------------------
-        // DETECTAR PULSO DE RESET (I2)
-        // -------------------------------
-      const resetPulse =
-        inputs.i2_reset &&
-        !simState.prevI2Reset &&
-        inputs.i3_energia;
-
-        nextSimState.prevI2Reset = inputs.i2_reset;
-
-       if (resetPulse && !curr.isManualMode) {
-            nextSimState.alarmActive = false;
-            nextSimState.alarmReseted = true;
-            nextSimState.timerAlarme = 0;
-            nextOutputs.q7_alarme = false;
-        }
-
-        // -------------------------------
-        // 1. FALHA DE ENERGIA (I3)
-        // -------------------------------
-        if (!inputs.i3_energia) {
-            nextOutputs = {
-                q1_rosca_principal: false,
-                q2_rosca_secundaria: false,
-                q3_vibrador: false,
-                q4_ventoinha: false,
-                q5_corta_fogo: false,
-                q6_damper: false,
-                q7_alarme: true
-            };
-            nextSimState.sequenceStep = 'STOPPED';
-            nextSimState.alarmActive = true;
-            nextSimState.alarmReseted = false;
-            return { ...curr, outputs: nextOutputs, simState: nextSimState };
-        }
-
-        // -------------------------------
-        // 2. SEQUÊNCIA DE CONTROLE
-        // -------------------------------
-        const tempBelowSetpoint = inputs.i6_temp_sensor < params.sp_temp;
-        const tempInHysteresis = Math.abs(inputs.i6_temp_sensor - params.sp_temp) <= params.hist_temp;
-
-        // CONDIÇÃO DE PARTIDA: I1 ativo + Temperatura < Setpoint
-        if (inputs.i1_habilitacao && tempBelowSetpoint) {
-
-            // Liga Ventoinha (Q4)
-            nextOutputs.q4_ventoinha = true;
-
-            // Liga Rosca Secundária (Q2) em ciclo
-            nextSimState.timerRoscaSec++;
-            const cycleSec = params.time_rosca_sec_on + params.time_rosca_sec_off;
-            const posSec = nextSimState.timerRoscaSec % cycleSec;
-            nextOutputs.q2_rosca_secundaria = (posSec < params.time_rosca_sec_on);
-
-            // Aciona Corta-Fogo (Q5) para abrir
-            nextOutputs.q5_corta_fogo = true;
-
-            // Simulação Movimento Válvula
-            if (nextOutputs.q5_corta_fogo && !nextInputs.i4_fim_curso_aberta) {
-                nextInputs.i5_fim_curso_fechada = false;
-                if (Math.random() > 0.85) {
-                    nextInputs.i4_fim_curso_aberta = true;
-                }
-            }
-
-            // Quando detectar abertura total (I4), liga Rosca Principal (Q1) e Vibrador (Q3)
-            if (inputs.i4_fim_curso_aberta) {
-                nextOutputs.q1_rosca_principal = true;
-
-                // Vibrador (Q3) - Cíclico, respeitando tempos ON/OFF
-                nextSimState.timerVibrador++;
-                const cycleVib = params.time_vibrador_on + params.time_vibrador_off;
-                const posVib = nextSimState.timerVibrador % cycleVib;
-                nextOutputs.q3_vibrador = (posVib < params.time_vibrador_on);
-
-                nextSimState.sequenceStep = 'RUNNING';
-            } else {
-                nextOutputs.q1_rosca_principal = false;
-                nextOutputs.q3_vibrador = false;
-                nextSimState.timerVibrador = 0;
-            }
-        }
-        // CONDIÇÃO DE PARADA: I1 desligado OU Temperatura >= Setpoint
-        else if (!inputs.i1_habilitacao || !tempBelowSetpoint) {
-            // Desliga Q1, Q3, Q2, Q4
-            nextOutputs.q1_rosca_principal = false;
-            nextOutputs.q3_vibrador = false;
-            nextOutputs.q2_rosca_secundaria = false;
-            nextOutputs.q4_ventoinha = false;
-
-            // Desenergiza Q5 -> Fechamento
-            nextOutputs.q5_corta_fogo = false;
-            nextSimState.sequenceStep = 'STOPPED';
-            nextSimState.timerVibrador = 0;
-            nextSimState.timerRoscaSec = 0;
-
-            // Simulação Fechamento Válvula
-            if (!nextOutputs.q5_corta_fogo && !nextInputs.i5_fim_curso_fechada) {
-                nextInputs.i4_fim_curso_aberta = false;
-                if (Math.random() > 0.7) {
-                    nextInputs.i5_fim_curso_fechada = true;
-                }
-            }
-        }
-
-        // -------------------------------
-        // 3. CHAMA PILOTO
-        // -------------------------------
-        if (tempInHysteresis) {
-            nextSimState.tempInHysteresisTimer++;
-            const waitSeconds = params.time_chama_wait * 60;
-            const activeSeconds = params.time_chama_atv;
-            const totalCycle = waitSeconds + activeSeconds;
-
-            // Reinicia o ciclo se ultrapassar o tempo total (Espera + Ativação)
-            if (nextSimState.tempInHysteresisTimer >= totalCycle) {
-                nextSimState.tempInHysteresisTimer = 0;
-            }
-
-            // Se passou do tempo de espera, ativa a saída
-            if (nextSimState.tempInHysteresisTimer >= waitSeconds) {
-                nextOutputs.q4_ventoinha = true;
-                nextSimState.chamaPilotoActive = true;
-            } else {
-                nextSimState.chamaPilotoActive = false;
-            }
-        } else {
-            nextSimState.tempInHysteresisTimer = 0;
-            nextSimState.chamaPilotoActive = false;
-        }
-
-        // -------------------------------
-        // 4. CONTROLE DE UMIDADE (Independente)
-        // -------------------------------
-        if ((inputs.umidade_sensor + params.hist_umid) < params.sp_umid) {
-            nextOutputs.q6_damper = true;
-        } else if (inputs.umidade_sensor > params.sp_umid) {
-            nextOutputs.q6_damper = false;
-        }
-
-        // -------------------------------
-        // 5. ALARME (Q7)
-        // -------------------------------
-        const umidadeForaFaixa =
-            inputs.umidade_sensor < (params.sp_umid - params.hist_umid) ||
-            inputs.umidade_sensor > (params.sp_umid + params.hist_umid);
-
-        if (umidadeForaFaixa && !nextSimState.alarmReseted) {
-            nextSimState.alarmActive = true;
-        }
-
-        // Alarme cíclico ON/OFF após reset
-        if (nextSimState.alarmActive && nextSimState.alarmReseted && params.alarme_enabled) {
-            nextSimState.timerAlarme++;
-            const cycleAlarm = (params.time_alarme_on + params.time_alarme_off) * 60; // Converter para segundos
-            const posAlarm = nextSimState.timerAlarme % cycleAlarm;
-            nextOutputs.q7_alarme = (posAlarm < (params.time_alarme_on * 60));
-        } else if (nextSimState.alarmActive && !nextSimState.alarmReseted) {
-            nextOutputs.q7_alarme = true;
-        } else {
-            nextOutputs.q7_alarme = false;
-            nextSimState.timerAlarme = 0;
-        }
-
-        return {
-            ...curr,
-            outputs: nextOutputs,
-            simState: nextSimState,
-            inputs: nextInputs
-        };
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [state.isConnected, state.isManualMode, isDemoMode, state.macAddress]);
+  }, [state.macAddress]);
 
   // --- ACTIONS ---
   const setMacAddress = useCallback((mac: string) => {
@@ -419,7 +221,7 @@ if (!isDemoMode || !state.isConnected) return;
   const updateParams = useCallback((newParams: Partial<Parameters>) => {
     setState(s => {
         const updated = { ...s.params, ...newParams };
-        if (!isDemoMode && clientRef.current?.connected) {
+        if (clientRef.current?.connected) {
             const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
             const payload: any = {};
 
@@ -445,63 +247,40 @@ if (!isDemoMode || !state.isConnected) return;
         }
         return { ...s, params: updated };
     });
-  }, [isDemoMode]);
+  }, []);
 
-    const toggleInput = useCallback(
-      (key: keyof SystemInputs) => {
-        if (!state.isManualMode) return;
+  const toggleOutputManual = useCallback((key: keyof SystemOutputs) => {
+    setState(s => {
+      if (!s.isManualMode) return s;
 
-        setState(s => ({
-          ...s,
-          inputs: {
-            ...s.inputs,
-              [key]: !s.inputs[key],
-          },
-        }));
-      },
-      [isDemoMode]
-    );
+      const newOutputs = { ...s.outputs, [key]: !s.outputs[key] };
 
+      if (clientRef.current?.connected) {
+        const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
+        const keyMap: Record<string, string> = {
+          q1_rosca_principal: 'q1',
+          q2_rosca_secundaria: 'q2',
+          q3_vibrador: 'q3',
+          q4_ventoinha: 'q4',
+          q5_corta_fogo: 'q5',
+          q6_damper: 'q6',
+          q7_alarme: 'q7'
+        };
 
+        clientRef.current.publish(
+          topicCmd,
+          JSON.stringify({
+            manual_mode: true,
+            [keyMap[key]]: newOutputs[key]
+          })
+        );
+      }
 
-  const updateSensor = useCallback((key: 'i6_temp_sensor' | 'umidade_sensor', value: number) => {
-    if (!isDemoMode) return;
-    setState(s => ({ ...s, inputs: { ...s.inputs, [key]: value } }));
-  }, [isDemoMode]);
+      return { ...s, outputs: newOutputs };
+    });
+  }, []);
 
-    const toggleOutputManual = useCallback((key: keyof SystemOutputs) => {
-      setState(s => {
-        if (!s.isManualMode) return s; // 🔒 trava fora do teste
-
-        const newOutputs = { ...s.outputs, [key]: !s.outputs[key] };
-
-        if (!isDemoMode && clientRef.current?.connected) {
-          const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
-          const keyMap: Record<string, string> = {
-            q1_rosca_principal: 'q1',
-            q2_rosca_secundaria: 'q2',
-            q3_vibrador: 'q3',
-            q4_ventoinha: 'q4',
-            q5_corta_fogo: 'q5',
-            q6_damper: 'q6',
-            q7_alarme: 'q7'
-          };
-
-          clientRef.current.publish(
-            topicCmd,
-            JSON.stringify({
-              manual_mode: true,
-              [keyMap[key]]: newOutputs[key]
-            })
-          );
-        }
-
-        return { ...s, outputs: newOutputs };
-      });
-    }, [isDemoMode]);
-
-
-    const shutdownAllOutputs = useCallback(() => {
+  const shutdownAllOutputs = useCallback(() => {
     setState(s => {
       const allOff: SystemOutputs = {
         q1_rosca_principal: false,
@@ -513,8 +292,7 @@ if (!isDemoMode || !state.isConnected) return;
         q7_alarme: false,
       };
 
-      // Envia para o ESP32
-      if (!isDemoMode && clientRef.current?.connected) {
+      if (clientRef.current?.connected) {
         const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
         const payload = {
           manual_mode: true,
@@ -531,23 +309,21 @@ if (!isDemoMode || !state.isConnected) return;
 
       return { ...s, outputs: allOff };
     });
-  }, [isDemoMode]);
+  }, []);
 
+  const setManualMode = useCallback((enabled: boolean) => {
+    shutdownAllOutputs();
 
-      const setManualMode = useCallback((enabled: boolean) => {
-        shutdownAllOutputs();
+    setState(s => {
+      if (clientRef.current?.connected) {
+        const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
+        const payload = { manual_mode: enabled };
+        clientRef.current.publish(topicCmd, JSON.stringify(payload));
+      }
 
-        setState(s => {
-          if (!isDemoMode && clientRef.current?.connected) {
-            const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
-            const payload = { manual_mode: enabled };
-            clientRef.current.publish(topicCmd, JSON.stringify(payload));
-          }
-
-          return { ...s, isManualMode: enabled };
-        });
-      }, [isDemoMode, shutdownAllOutputs]);
-
+      return { ...s, isManualMode: enabled };
+    });
+  }, [shutdownAllOutputs]);
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {
@@ -559,8 +335,8 @@ if (!isDemoMode || !state.isConnected) return;
   }, []);
 
   const value = useMemo(() => ({
-      state, setMacAddress, updateParams, toggleInput, updateSensor, toggleOutputManual, setManualMode, disconnect 
-  }), [state, setMacAddress, updateParams, toggleInput, updateSensor, toggleOutputManual, setManualMode, disconnect]);
+      state, setMacAddress, updateParams, toggleOutputManual, setManualMode, disconnect 
+  }), [state, setMacAddress, updateParams, toggleOutputManual, setManualMode, disconnect]);
 
   return <MachineContext.Provider value={value}>{children}</MachineContext.Provider>;
 };

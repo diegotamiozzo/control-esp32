@@ -18,7 +18,7 @@ const Settings: React.FC = () => {
     }
   }, [state.params, isModified]);
 
-  const handleChange = (
+const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
@@ -28,7 +28,28 @@ const Settings: React.FC = () => {
       newValue = (e.target as HTMLInputElement).checked;
     }
 
-    setFormData(prev => ({ ...prev, [name]: newValue } as Parameters));
+    // Se mudou a unidade de temperatura, converte o setpoint
+    if (name === 'temp_unit' && value !== formData.temp_unit) {
+      const currentTemp = parseFloat(String(formData.sp_temp));
+      let convertedTemp = currentTemp;
+      
+      if (value === 'F') {
+        // Celsius para Fahrenheit
+        convertedTemp = (currentTemp * 9/5) + 32;
+      } else {
+        // Fahrenheit para Celsius
+        convertedTemp = (currentTemp - 32) * 5/9;
+      }
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: newValue,
+        sp_temp: Math.round(convertedTemp * 10) / 10 // Arredonda para 1 casa decimal
+      } as Parameters));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: newValue } as Parameters));
+    }
+    
     setIsSaved(false);
     setIsModified(true);
   };

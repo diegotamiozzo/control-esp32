@@ -198,8 +198,16 @@ void readInputs() {
   inputs.i1_habilitacao = !digitalRead(PIN_I1_HABILITACAO);
 
   bool i2_current = !digitalRead(PIN_I2_RESET);
-  if (i2_current && !i2_reset_last) inputs.i2_reset = true;
-  else inputs.i2_reset = false;
+  
+  // Em modo manual, mostra o estado real do botão
+  if (manual_mode) {
+    inputs.i2_reset = i2_current;
+  } else {
+    // Em modo automático, detecta apenas borda de subida (pulso)
+    if (i2_current && !i2_reset_last) inputs.i2_reset = true;
+    else inputs.i2_reset = false;
+  }
+  
   i2_reset_last = i2_current;
 
   inputs.i3_energia = !digitalRead(PIN_I3_ENERGIA);
@@ -207,9 +215,16 @@ void readInputs() {
   inputs.i5_fim_curso_fechada = !digitalRead(PIN_I5_FIM_CURSO_FECHADA);
 
   float h = dht.readHumidity();
-  float t = dht.readTemperature(temp_unit == 'F');
+  // Sempre lê em Celsius do sensor
+  float t = dht.readTemperature(false);
+  
   if (!isnan(h) && !isnan(t)) {
-    inputs.i6_temp_sensor = t;
+    // Converte para Fahrenheit se necessário
+    if (temp_unit == 'F') {
+      inputs.i6_temp_sensor = (t * 9.0 / 5.0) + 32.0;
+    } else {
+      inputs.i6_temp_sensor = t;
+    }
     inputs.i7_umidade_sensor = h;
   }
 }
@@ -477,17 +492,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void attemptMqttConnection() {
-  Serial.print("⏳ Tentando MQTT... ");
+  Serial.print("Tentando MQTT... ");
   
   // Tenta conectar
   if (client.connect(client_id, mqtt_user, mqtt_pass, topic_lwt, 1, true, "offline")) {
-    Serial.println("✅ CONECTADO!");
+    Serial.println("CONECTADO!");
     client.publish(topic_lwt, "online", true);
     client.subscribe(topic_command);
     Serial.print("Inscrito em: ");
     Serial.println(topic_command);
   } else {
-    Serial.print("❌ Falha. Estado = ");
+    Serial.print("Falha. Estado = ");
     Serial.print(client.state());
     Serial.println(" (Tentando novamente em 5s)");
     

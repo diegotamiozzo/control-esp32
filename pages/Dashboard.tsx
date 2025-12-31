@@ -79,14 +79,16 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-400 font-medium">Setpoint</p>
-              <p className="text-lg md:text-xl font-bold text-orange-600 leading-none">{params.sp_temp}°C</p>
+              <p className="text-lg md:text-xl font-bold text-orange-600 leading-none">
+                {Number(params.sp_temp).toFixed(1)} °{params.temp_unit}
+              </p>
             </div>
           </div>
 
-          <div className="relative z-10 flex items-end justify-between mb-2">
+         <div className="relative z-10 flex items-end justify-between mb-2">
             <span className="text-4xl md:text-5xl font-bold text-slate-800 tracking-tight">
               {inputs.i6_temp_sensor.toFixed(1)}
-              <span className="text-xl md:text-2xl text-slate-400 ml-1">°C</span>
+              <span className="text-xl md:text-2xl text-slate-400 ml-1">°{params.temp_unit}</span>
             </span>
           </div>
 

@@ -175,19 +175,19 @@ const TestMode: React.FC = () => {
 
                 {/* Sensor Values */}
                 <div className="mt-4 pt-4 border-t border-slate-100">
-                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Valores dos Sensores</h4>
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                            <span className="text-xs font-medium text-slate-600">Temperatura (I6)</span>
-                            <span className="text-sm font-bold text-orange-600">{state.inputs.i6_temp_sensor.toFixed(1)}°C</span>
-                        </div>
-                        <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                            <span className="text-xs font-medium text-slate-600">Umidade (I7)</span>
-                            <span className="text-sm font-bold text-blue-600">{state.inputs.umidade_sensor.toFixed(1)}%</span>
+                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Valores dos Sensores</h4>
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                                <span className="text-xs font-medium text-slate-600">Temperatura (I6)</span>
+                                <span className="text-sm font-bold text-orange-600">{state.inputs.i6_temp_sensor.toFixed(1)}°{state.params.temp_unit}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2 bg-slate-50 rounded">
+                                <span className="text-xs font-medium text-slate-600">Umidade (I7)</span>
+                                <span className="text-sm font-bold text-blue-600">{state.inputs.umidade_sensor.toFixed(1)}%</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
             {/* Outputs Control */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">

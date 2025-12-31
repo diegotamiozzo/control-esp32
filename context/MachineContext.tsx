@@ -182,7 +182,18 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
                         if (payload.sp_umid !== undefined) newParams.sp_umid = Number(payload.sp_umid);
                         if (payload.hist_temp !== undefined) newParams.hist_temp = Number(payload.hist_temp);
                         if (payload.hist_umid !== undefined) newParams.hist_umid = Number(payload.hist_umid);
-                        if (payload.temp_unit !== undefined) newParams.temp_unit = payload.temp_unit === 'F' ? 'F' : 'C';
+                        if (payload.temp_unit !== undefined) {
+                            newParams.temp_unit = payload.temp_unit === 'F' ? 'F' : 'C';
+                        }
+                        if (payload.time_vibrador_on !== undefined) newParams.time_vibrador_on = Number(payload.time_vibrador_on);
+                        if (payload.time_vibrador_off !== undefined) newParams.time_vibrador_off = Number(payload.time_vibrador_off);
+                        if (payload.time_rosca_sec_on !== undefined) newParams.time_rosca_sec_on = Number(payload.time_rosca_sec_on);
+                        if (payload.time_rosca_sec_off !== undefined) newParams.time_rosca_sec_off = Number(payload.time_rosca_sec_off);
+                        if (payload.time_alarme_on !== undefined) newParams.time_alarme_on = Number(payload.time_alarme_on);
+                        if (payload.time_alarme_off !== undefined) newParams.time_alarme_off = Number(payload.time_alarme_off);
+                        if (payload.alarme_enabled !== undefined) newParams.alarme_enabled = Boolean(payload.alarme_enabled);
+                        if (payload.time_chama_atv !== undefined) newParams.time_chama_atv = Number(payload.time_chama_atv);
+                        if (payload.time_chama_wait !== undefined) newParams.time_chama_wait = Number(payload.time_chama_wait);
 
                         // Mapear estado da máquina e mensagem de alarme
                         const machineState = payload.state !== undefined ? Number(payload.state) : prev.machineState;

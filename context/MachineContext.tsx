@@ -154,6 +154,8 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
             if (topic === topicTelemetry) {
                 try {
                     const payload = JSON.parse(message.toString());
+                    console.log('📥 Telemetria recebida:', payload);
+                    
                     setState(prev => {
                         const newInputs = { ...prev.inputs };
                         const newOutputs = { ...prev.outputs };
@@ -177,7 +179,7 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
                         if (payload.q6_damp !== undefined) newOutputs.q6_damper = !!payload.q6_damp;
                         if (payload.q7_alarm !== undefined) newOutputs.q7_alarme = !!payload.q7_alarm;
 
-                        // Mapear parâmetros do ESP32
+                        // Mapear parâmetros do ESP32 - COMPLETO
                         if (payload.sp_temp !== undefined) newParams.sp_temp = Number(payload.sp_temp);
                         if (payload.sp_umid !== undefined) newParams.sp_umid = Number(payload.sp_umid);
                         if (payload.hist_temp !== undefined) newParams.hist_temp = Number(payload.hist_temp);
@@ -185,13 +187,27 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
                         if (payload.temp_unit !== undefined) {
                             newParams.temp_unit = payload.temp_unit === 'F' ? 'F' : 'C';
                         }
+                        
+                        // IMPORTANTE: Mapear todos os temporizadores incluindo alarme
                         if (payload.time_vibrador_on !== undefined) newParams.time_vibrador_on = Number(payload.time_vibrador_on);
                         if (payload.time_vibrador_off !== undefined) newParams.time_vibrador_off = Number(payload.time_vibrador_off);
                         if (payload.time_rosca_sec_on !== undefined) newParams.time_rosca_sec_on = Number(payload.time_rosca_sec_on);
                         if (payload.time_rosca_sec_off !== undefined) newParams.time_rosca_sec_off = Number(payload.time_rosca_sec_off);
-                        if (payload.time_alarme_on !== undefined) newParams.time_alarme_on = Number(payload.time_alarme_on);
-                        if (payload.time_alarme_off !== undefined) newParams.time_alarme_off = Number(payload.time_alarme_off);
-                        if (payload.alarme_enabled !== undefined) newParams.alarme_enabled = Boolean(payload.alarme_enabled);
+                        
+                        // CRÍTICO: Temporizadores do alarme
+                        if (payload.time_alarme_on !== undefined) {
+                            newParams.time_alarme_on = Number(payload.time_alarme_on);
+                            console.log('⏰ Tempo alarme ON recebido:', payload.time_alarme_on);
+                        }
+                        if (payload.time_alarme_off !== undefined) {
+                            newParams.time_alarme_off = Number(payload.time_alarme_off);
+                            console.log('⏰ Tempo alarme OFF recebido:', payload.time_alarme_off);
+                        }
+                        if (payload.alarme_enabled !== undefined) {
+                            newParams.alarme_enabled = Boolean(payload.alarme_enabled);
+                            console.log('🔔 Alarme habilitado:', payload.alarme_enabled);
+                        }
+                        
                         if (payload.time_chama_atv !== undefined) newParams.time_chama_atv = Number(payload.time_chama_atv);
                         if (payload.time_chama_wait !== undefined) newParams.time_chama_wait = Number(payload.time_chama_wait);
 
@@ -236,7 +252,7 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
             const topicCmd = `${TOPIC_PREFIX}/${s.macAddress}/comando`;
             const payload: any = {};
 
-            // Enviar todos os parâmetros
+            // Enviar todos os parâmetros que foram modificados
             if (newParams.sp_temp !== undefined) payload.sp_temp = updated.sp_temp;
             if (newParams.sp_umid !== undefined) payload.sp_umid = updated.sp_umid;
             if (newParams.hist_temp !== undefined) payload.hist_temp = updated.hist_temp;
@@ -246,13 +262,26 @@ export const MachineProvider = ({ children }: { children?: ReactNode }) => {
             if (newParams.time_vibrador_off !== undefined) payload.time_vibrador_off = updated.time_vibrador_off;
             if (newParams.time_rosca_sec_on !== undefined) payload.time_rosca_sec_on = updated.time_rosca_sec_on;
             if (newParams.time_rosca_sec_off !== undefined) payload.time_rosca_sec_off = updated.time_rosca_sec_off;
-            if (newParams.time_alarme_on !== undefined) payload.time_alarme_on = updated.time_alarme_on;
-            if (newParams.time_alarme_off !== undefined) payload.time_alarme_off = updated.time_alarme_off;
-            if (newParams.alarme_enabled !== undefined) payload.alarme_enabled = updated.alarme_enabled;
+            
+            // CRÍTICO: Enviar parâmetros do alarme
+            if (newParams.time_alarme_on !== undefined) {
+                payload.time_alarme_on = updated.time_alarme_on;
+                console.log('📤 Enviando tempo alarme ON:', updated.time_alarme_on);
+            }
+            if (newParams.time_alarme_off !== undefined) {
+                payload.time_alarme_off = updated.time_alarme_off;
+                console.log('📤 Enviando tempo alarme OFF:', updated.time_alarme_off);
+            }
+            if (newParams.alarme_enabled !== undefined) {
+                payload.alarme_enabled = updated.alarme_enabled;
+                console.log('📤 Enviando alarme habilitado:', updated.alarme_enabled);
+            }
+            
             if (newParams.time_chama_atv !== undefined) payload.time_chama_atv = updated.time_chama_atv;
             if (newParams.time_chama_wait !== undefined) payload.time_chama_wait = updated.time_chama_wait;
 
             if (Object.keys(payload).length > 0) {
+                console.log('📤 Enviando comando MQTT:', payload);
                 clientRef.current.publish(topicCmd, JSON.stringify(payload));
             }
         }

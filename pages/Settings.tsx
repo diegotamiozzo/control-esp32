@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Save, RefreshCw, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useMachine } from '../context/MachineContext';
 import { Parameters } from '../types';
 
@@ -11,14 +11,13 @@ const Settings: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [isModified, setIsModified] = useState(false);
 
-  // Sync if params change externally
   useEffect(() => {
     if (!isModified) {
       setFormData(state.params);
     }
   }, [state.params, isModified]);
 
-const handleChange = (
+  const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
@@ -28,23 +27,20 @@ const handleChange = (
       newValue = (e.target as HTMLInputElement).checked;
     }
 
-    // Se mudou a unidade de temperatura, converte o setpoint
     if (name === 'temp_unit' && value !== formData.temp_unit) {
       const currentTemp = parseFloat(String(formData.sp_temp));
       let convertedTemp = currentTemp;
       
       if (value === 'F') {
-        // Celsius para Fahrenheit
         convertedTemp = (currentTemp * 9/5) + 32;
       } else {
-        // Fahrenheit para Celsius
         convertedTemp = (currentTemp - 32) * 5/9;
       }
       
       setFormData(prev => ({ 
         ...prev, 
         [name]: newValue,
-        sp_temp: Math.round(convertedTemp * 10) / 10 // Arredonda para 1 casa decimal
+        sp_temp: Math.round(convertedTemp * 10) / 10
       } as Parameters));
     } else {
       setFormData(prev => ({ ...prev, [name]: newValue } as Parameters));
@@ -64,13 +60,11 @@ const handleChange = (
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Função auxiliar para converter string em número de forma segura
     const getNumericValue = (val: any, defaultVal: number) => {
       const num = parseFloat(String(val));
       return isNaN(num) ? defaultVal : num;
     };
 
-    // Converte todos os campos numéricos antes de validar
     const numericData = {
       sp_temp: getNumericValue(formData.sp_temp, 0),
       hist_temp: getNumericValue(formData.hist_temp, 1),
@@ -106,7 +100,6 @@ const handleChange = (
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-slate-800">
@@ -134,7 +127,6 @@ const handleChange = (
         </div>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSave} className="space-y-6">
         {/* Setpoints Section */}
         <section className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -327,20 +319,43 @@ const handleChange = (
               </div>
             </div>
 
-            {/* Alarme */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            {/* Alarme - MODIFICADO */}
+            <div className={`p-4 rounded-xl border transition-all ${
+              formData.alarme_enabled 
+                ? 'bg-rose-50 border-rose-200' 
+                : 'bg-slate-50 border-slate-100'
+            }`}>
               <div className="flex justify-between items-center mb-3">
-                <h4 className="font-medium text-slate-700">Alarme (Q7)</h4>
-                <label className="flex items-center space-x-2 cursor-pointer">
+                <h4 className="font-medium text-slate-700">Alarme Sonoro (Q7)</h4>
+                <label className="flex items-center space-x-2 cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={formData.alarme_enabled}
                     onChange={handleCheckboxChange('alarme_enabled')}
-                    className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500 accent-orange-600"
+                    className="w-5 h-5 text-rose-600 rounded focus:ring-rose-500 accent-rose-600"
                   />
-                  <span className="text-xs text-slate-500">Habilitado</span>
+                  <span className={`text-xs font-bold transition-colors ${
+                    formData.alarme_enabled ? 'text-rose-700' : 'text-slate-500'
+                  }`}>
+                    {formData.alarme_enabled ? 'HABILITADO' : 'DESABILITADO'}
+                  </span>
                 </label>
               </div>
+              
+              {/* Aviso de Segurança */}
+              <div className={`mb-3 p-2 rounded-lg border flex items-start space-x-2 ${
+                formData.alarme_enabled 
+                  ? 'bg-rose-100 border-rose-300' 
+                  : 'bg-amber-50 border-amber-200'
+              }`}>
+                <AlertTriangle size={14} className={formData.alarme_enabled ? 'text-rose-600 mt-0.5' : 'text-amber-600 mt-0.5'} />
+                <p className="text-[10px] leading-tight text-slate-600">
+                  {formData.alarme_enabled 
+                    ? 'Alarme físico será acionado em caso de falhas.'
+                    : 'Alarme físico desativado.'}
+                </p>
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">
@@ -352,7 +367,7 @@ const handleChange = (
                     value={formData.time_alarme_on}
                     onChange={handleChange}
                     min="0"
-                    className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                    className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-rose-500 outline-none"
                   />
                 </div>
                 <div>
@@ -365,7 +380,7 @@ const handleChange = (
                     value={formData.time_alarme_off}
                     onChange={handleChange}
                     min="0"
-                    className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-orange-500 outline-none"
+                    className="w-full mt-1 px-3 py-2.5 bg-white border border-slate-200 rounded-md focus:ring-2 focus:ring-rose-500 outline-none"
                   />
                 </div>
               </div>
@@ -422,3 +437,4 @@ const handleChange = (
 };
 
 export default Settings;
+

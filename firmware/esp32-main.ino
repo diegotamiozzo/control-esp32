@@ -7,7 +7,7 @@
 #include <Preferences.h>
 
 // =================================================================
-// SISTEMA DE CONTROLE INDUSTRIAL
+// SISTEMA DE CONTROLE INDUSTRIAL - VERSÃO MELHORADA
 // =================================================================
 
 // --- CONFIGURAÇÕES DO MQTT (HIVEMQ CLOUD) ---
@@ -105,7 +105,7 @@ int time_rosca_sec_on = 8;
 int time_rosca_sec_off = 15;
 int time_alarme_on = 1;
 int time_alarme_off = 2;
-bool alarme_enabled = true;
+bool alarme_enabled = true;  // NOVO: Controle de habilitação do alarme
 
 int time_chama_atv = 30;
 int time_chama_wait = 5;
@@ -215,11 +215,9 @@ void readInputs() {
   inputs.i5_fim_curso_fechada = !digitalRead(PIN_I5_FIM_CURSO_FECHADA);
 
   float h = dht.readHumidity();
-  // Sempre lê em Celsius do sensor
   float t = dht.readTemperature(false);
   
   if (!isnan(h) && !isnan(t)) {
-    // Converte para Fahrenheit se necessário
     if (temp_unit == 'F') {
       inputs.i6_temp_sensor = (t * 9.0 / 5.0) + 32.0;
     } else {
@@ -236,7 +234,13 @@ void applyOutputs() {
   digitalWrite(PIN_Q4_VENTOINHA, outputs.q4_ventoinha ? HIGH : LOW);
   digitalWrite(PIN_Q5_CORTA_FOGO, outputs.q5_corta_fogo ? HIGH : LOW);
   digitalWrite(PIN_Q6_DAMPER, outputs.q6_damper ? HIGH : LOW);
-  digitalWrite(PIN_Q7_ALARME, outputs.q7_alarme ? HIGH : LOW);
+  
+  // MODIFICAÇÃO: Q7 só liga fisicamente se alarme_enabled estiver habilitado
+  if (alarme_enabled) {
+    digitalWrite(PIN_Q7_ALARME, outputs.q7_alarme ? HIGH : LOW);
+  } else {
+    digitalWrite(PIN_Q7_ALARME, LOW); // Mantém desligado se não habilitado
+  }
 }
 
 void controlHumidity() {
@@ -250,14 +254,20 @@ void controlHumidity() {
 }
 
 // =================================================================
-// LÓGICA DE CONTROLE (MÁQUINA DE ESTADOS)
+// LÓGICA DE CONTROLE (MÁQUINA DE ESTADOS) - MODIFICADA
 // =================================================================
 void runSystemLogic() {
   unsigned long now = millis();
 
+  // MODIFICAÇÃO: Verificação de falta de energia com ação de segurança
   if (!inputs.i3_energia && currentState != ST_ALARM_CRITICAL) {
     currentState = ST_ALARM_CRITICAL;
     alarmMessage = "FALTA FASE (I3)";
+    
+    // SEGURANÇA: Abre damper imediatamente para resfriamento
+    outputs.q6_damper = true;
+    digitalWrite(PIN_Q6_DAMPER, HIGH);
+    
     return;
   }
 
@@ -269,14 +279,17 @@ void runSystemLogic() {
       outputs.q3_vibrador = false;
       outputs.q4_ventoinha = false;
       outputs.q5_corta_fogo = false;
-      outputs.q6_damper = false;
+      
+      // MODIFICAÇÃO: Mantém damper ABERTO para segurança
+      outputs.q6_damper = true;
 
+      // MODIFICAÇÃO: Alarme cíclico apenas se habilitado
       if (alarme_enabled) {
         unsigned long cycle = (time_alarme_on + time_alarme_off) * 1000;
         unsigned long pos = now % cycle;
         outputs.q7_alarme = (pos < (time_alarme_on * 1000));
       } else {
-        outputs.q7_alarme = true;
+        outputs.q7_alarme = true; // Estado lógico ativo, mas não fisicamente
       }
 
       if (inputs.i3_energia && inputs.i1_habilitacao && inputs.i2_reset) {
@@ -299,14 +312,11 @@ void runSystemLogic() {
         unsigned long cycle_pos = now - timer_pilot_wait;
 
         if (cycle_pos >= (wait_ms + run_ms)) {
-          // Fim do ciclo (Espera + Ativação), reinicia contagem
           timer_pilot_wait = now;
           outputs.q4_ventoinha = false;
         } else if (cycle_pos >= wait_ms) {
-          // Passou o tempo de espera, ativa a ventoinha
           outputs.q4_ventoinha = true;
         } else {
-          // Ainda no tempo de espera
           outputs.q4_ventoinha = false;
         }
       } else {
@@ -428,6 +438,19 @@ void publishTelemetry() {
   doc["hist_temp"] = hist_temp;
   doc["hist_umid"] = hist_umid;
   doc["temp_unit"] = String(temp_unit);
+  
+  // ADICIONADO: Envia todos os parâmetros do alarme
+  doc["alarme_enabled"] = alarme_enabled;
+  doc["time_alarme_on"] = time_alarme_on;
+  doc["time_alarme_off"] = time_alarme_off;
+  
+  // Envia também os outros temporizadores para sincronização completa
+  doc["time_vibrador_on"] = time_vibrador_on;
+  doc["time_vibrador_off"] = time_vibrador_off;
+  doc["time_rosca_sec_on"] = time_rosca_sec_on;
+  doc["time_rosca_sec_off"] = time_rosca_sec_off;
+  doc["time_chama_atv"] = time_chama_atv;
+  doc["time_chama_wait"] = time_chama_wait;
 
   char payload[768];
   serializeJson(doc, payload);
@@ -471,7 +494,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if (doc.containsKey("time_rosca_sec_off")) time_rosca_sec_off = doc["time_rosca_sec_off"];
   if (doc.containsKey("time_alarme_on")) time_alarme_on = doc["time_alarme_on"];
   if (doc.containsKey("time_alarme_off")) time_alarme_off = doc["time_alarme_off"];
-  if (doc.containsKey("alarme_enabled")) alarme_enabled = doc["alarme_enabled"];
+  
+  // MODIFICAÇÃO: Recebe habilitação do alarme
+  if (doc.containsKey("alarme_enabled")) {
+    alarme_enabled = doc["alarme_enabled"];
+    settings_changed = true;
+  }
+  
   if (doc.containsKey("time_chama_atv")) time_chama_atv = doc["time_chama_atv"];
   if (doc.containsKey("time_chama_wait")) time_chama_wait = doc["time_chama_wait"];
 
@@ -494,7 +523,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void attemptMqttConnection() {
   Serial.print("Tentando MQTT... ");
   
-  // Tenta conectar
   if (client.connect(client_id, mqtt_user, mqtt_pass, topic_lwt, 1, true, "offline")) {
     Serial.println("CONECTADO!");
     client.publish(topic_lwt, "online", true);
@@ -505,13 +533,12 @@ void attemptMqttConnection() {
     Serial.print("Falha. Estado = ");
     Serial.print(client.state());
     Serial.println(" (Tentando novamente em 5s)");
-    
-   }
+  }
 }
 
 void setup() {
   Serial.begin(115200);
-  delay(1000); // Espera estabilizar
+  delay(1000);
 
   dht.begin();
   loadSettings();
@@ -531,7 +558,6 @@ void setup() {
   pinMode(PIN_Q7_ALARME, OUTPUT);
 
   applyOutputs();
-
 
   wm.setConnectTimeout(20);
   wm.setConfigPortalTimeout(180);
@@ -554,16 +580,13 @@ void setup() {
   snprintf(topic_command, 64, "dispositivo/%s/comando", client_id);
   snprintf(topic_lwt, 64, "dispositivo/%s/conexao", client_id);
 
-  // --- CORREÇÃO CRÍTICA AQUI ---
+  Serial.print("MAC Address: ");
+  Serial.println(client_id);
 
-  // 1. Aumenta o tamanho do pacote permitido (Seu JSON é grande!)
+  // Configuração segura MQTT
   client.setBufferSize(2048);
-
-  // 2. Tenta conexão segura simplificada (Bypassa validação de certificado para teste)
-  // Se funcionar assim, o problema era o certificado CA. Se não, é senha ou firewall.
   espClient.setInsecure();
-  // espClient.setCACert(root_ca); // Descomente e use este se quiser validação estrita depois
-
+  
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
 }
